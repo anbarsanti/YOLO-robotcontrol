@@ -267,7 +267,7 @@ def construct_J_alpha(intersection_points):
 
     return J_alpha
 
-# J_o, Jacobian Matrix which maps xywhr format space into the image space (image feature vector with )
+# J_o, Jacobian Matrix which maps xywhr format space into the image space (image feature vector with xyxyxy format)
 J_o = torch.tensor()
 
 
