@@ -76,6 +76,7 @@ def is_intersect(boxA, boxB):
 ## -------------------------------------------------------------------------------------------------------
 ## ---------------------- FIND INTERSECTION AREA IF TWO OBBS ARE OVERLAPPING ----------------------
 ## ----------------------------------------------------------------------------------------------------
+## Other references using OpenCV: https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga3d476a3417130ae5154aea421ca7ead9
 
 def intersection_area_shapely(boxA, boxB):
     # Compute the intersection area using shapely library
@@ -85,6 +86,7 @@ def intersection_area_shapely(boxA, boxB):
         return polyA.intersection(polyB).area
     else:
         return None
+
 
 def cxyxyxyxy2xywhr(box):
     """
@@ -144,9 +146,32 @@ def line_intersection(line1, line2):
 
     return [x, y]
 
+def sort_points_clockwise(points):
+    """
+    Sorting some points in convex polygon in clockwise order
+    Args: list of array of points with format [[x, y],[x, y],[x, y],[x, y],...,[x, y]]
+    Return: sorted list of array with format [[x, y],[x, y],[x, y],...,[x, y]] in clockwise order
+    """
+    # Convert points to numpy array
+    points = np.array(points)
+
+    # Step 1: Find the centroid
+    centroid = np.mean(points, axis=0)
+
+    # Step 2: Calculate angles
+    angles = np.arctan2(points[:, 1] - centroid[1], points[:, 0] - centroid[0])
+
+    # Step 3: Sort points based on angles
+    sorted_indices = np.argsort(-angles)  # Negative for clockwise order
+    sorted_points = points[sorted_indices]
+
+    return sorted_points.tolist()
+
+
 def intersection_area_diy(boxA, boxB):
     """
-    Implementation of Sutherland Polygon Clipping for intersection area computation
+    Implementation of Polygon Clipping for intersection area computation
+    Here I am not implementing Sutherland Polygon Clipping since it does not cover the edge that intersect the other edge twice
     Args: two OBBs with format  [class, x1, y1, x2, y2, x3, y3, x4, y4] with shape (1,9)
     Returns: intersection area with shape (1,1)
     """
@@ -175,12 +200,15 @@ def intersection_area_diy(boxA, boxB):
             line2 = ([subject_vertices[j], subject_vertices[(j+1) % len_subject]])
             point = line_intersection(line1, line2)
 
-            # if point is not None:
-            #     intersection_points.append(point)
-            # if point in intersection_points:
-            #     print(point)
+            if point is not None:
+                if not any (p == point for p in intersection_points):
+                    intersection_points.append(point)
+
+    # Sorted
 
     return intersection_points
+
+    # Finding Area using tthe Triangle formula
 
 ## ------------------ Checking Purpose
 boxA = np.array([0, 0.1, 0.2, 0.9, 0.2, 0.9, 0.8, 0.1, 0.8])
@@ -195,7 +223,9 @@ print(cxyxyxyxy2xywhr(boxC))
 print(cxyxyxyxy2xywhr(boxD))
 print(cxyxyxyxy2xywhr(boxE))
 print("------------------------")
-print(intersection_area_diy(boxA, boxE))
+interp = intersection_area_diy(boxA, boxE)
+print(interp)
+
 
 # print("box A intersect box C area:", intersection_area_shapely(boxA, boxC))
 # print("intersection points:", intersection_area_diy(boxA, boxC))
