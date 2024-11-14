@@ -1,4 +1,8 @@
-#%% ﷽
+"""
+﷽
+author: @anbarsanti
+"""
+
 import numpy as np
 import math
 from matplotlib.path import Path
@@ -204,11 +208,21 @@ def intersection_area_diy(boxA, boxB):
                 if not any (p == point for p in intersection_points):
                     intersection_points.append(point)
 
-    # Sorted
+    # Sorting the points in clockwise order
+    intersection_points = sort_points_clockwise(intersection_points)
 
-    return intersection_points
+    # Finding Area using the Triangle formula by Mauren Abreu de Souza
+    len_points = len(intersection_points)
+    area = 0.0
+    for i in range(len_points):
+        j = (i + 1) % len_points
+        area += intersection_points[i][0] * intersection_points[j][1]
+        area -= intersection_points[j][0] * intersection_points[i][1]
 
-    # Finding Area using tthe Triangle formula
+    area = abs(area) / 2.0
+
+    return area
+
 
 ## ------------------ Checking Purpose
 boxA = np.array([0, 0.1, 0.2, 0.9, 0.2, 0.9, 0.8, 0.1, 0.8])
@@ -223,8 +237,15 @@ print(cxyxyxyxy2xywhr(boxC))
 print(cxyxyxyxy2xywhr(boxD))
 print(cxyxyxyxy2xywhr(boxE))
 print("------------------------")
-interp = intersection_area_diy(boxA, boxE)
-print(interp)
+
+print("DIY Area of boxA and boxE", intersection_area_diy(boxA, boxE))
+print("Shapely Area of boxA and boxE", intersection_area_shapely(boxA, boxE))
+print("------------------------")
+print("DIY Area of boxA and boxC", intersection_area_diy(boxA, boxC))
+print("Shapely Area of boxA and boxC", intersection_area_shapely(boxA, boxC))
+print("------------------------")
+print("DIY Area of boxA and boxD", intersection_area_diy(boxA, boxD))
+print("Shapely Area of boxA and boxD", intersection_area_shapely(boxA, boxD))
 
 
 # print("box A intersect box C area:", intersection_area_shapely(boxA, boxC))
