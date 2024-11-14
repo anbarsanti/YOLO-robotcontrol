@@ -1,9 +1,13 @@
-# ﷽
+#%% ﷽
 import numpy as np
 import math
-import PolygonCollision # Separating Axis Theorem from https://pypi.org/project/PolygonCollision/ --> does not work
-from ultralytics.data.converter import convert_dota_to_yolo_obb
+from matplotlib.path import Path
+import cv2
+from openpyxl.utils.units import dxa_to_cm
+from shapely.geometry import Polygon, Point, LineString
 
+# Useful sources:
+# https://programmerart.weebly.com/separating-axis-theorem.html
 
 # YOLO OBB format is class_index x1 y1 x2 y2 x3 y3 x4 y4
 # x1, y1: Coordinates of the first corner point
@@ -13,21 +17,30 @@ from ultralytics.data.converter import convert_dota_to_yolo_obb
 # All coordination are normalized to values between 0 and 1 relative to image dimensions (allows the annotation to be resolution dependent)
 # YOLO v11 OBB format is already in polygon format
 
-boxA = np.array([0, 0.2, 0.2, 0.8, 0.2, 0.8, 0.8, 0.2, 0.8])
-boxB = np.array([0, 0.5, 0.1, 0.9, 0.5, 0.5, 0.9, 0.1, 0.5])
-boxC = np.array([0, 0.3, 0.3, 0.7, 0.3, 0.7, 0.7, 0.7, 0.3])
-boxD = np.array([0, 0.3, 0.3, 0.4, 0.3, 0.4, 0.4, 0.3, 0.4])
-boxE = np.array([0, 0.7, 0.7, 0.8, 0.7, 0.8, 0.8, 0.7, 0.8])
+## ---------------------------------------------------------------------------------
+## ---------------------- ARE BOX A AND BOX B INTERSECTING? ----------------------
+## ---------------------- SEPARATION AXIS THEOREM ----------------------------------
+## ---------------------------------------------------------------------------------
 
-
-
-def convert_to_vertices(boxA):
-    # Change the format of array, from [0,1,2,3,4,5,6,7,8] to [[1,2], [3,4], [5,6], [7,8]]
-    vertices = [[boxA[i], boxA[i + 1]] for i in range(1, len(boxA), 2)]
+def convert_to_vertices(box):
+    """
+    Convert Oriented Bounding Boxes (OBB) from [label, x1, y1, x2, y2, x3, y3, x4, y4] to [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
+    Args:
+        box = input box of shape [1,9]
+    Returns:
+        Converted data in [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
+    """
+    vertices = [[box[i], box[i + 1]] for i in range(1, len(box), 2)]
     return vertices
 
 def edges_of(vertices):
-    # Return the vectors for the edges of the polygon
+    """
+    Return the vectors of the edges of the polygon
+    Args:
+        the vertices of the polygon
+    Returns:
+        the edges of the polygon
+    """
     edges = []
     N = len(vertices)
     for i in range(N):
@@ -35,41 +48,163 @@ def edges_of(vertices):
         edges.append(edge)
     return edges
 
-def orthogonal(v):
-    # Return a 90 degree clockwise rotation of the vector v
-    return np.array([-v[1], v[0]])
-
-def project(vertices, axis):
-    # project vertices [[1,2], [3,4], [5,6], [7,8]] onto axis [x,y]
-    dots = [np.dot(vertex, axis) for vertex in vertices]/np.linalg.norm(axis)
-    return [min(dots), max(dots)]
-
-def project_overlap(projection1, projection2):
-    # Check if projections1 [min1, max1] overlap with projection2[min2, max2]
-    # Overlap occur if and only if min1 < max2 and min2 < max1
-    return (projection1[0] < projection2[1]) and (projection2[0] < projection2[1])
-
 def is_intersect(boxA, boxB):
-    # Determining if two OBBs are intersecting using Separating Axis Theorem
+    """
+    Determining if two OBBs are intersecting using Separating Axis Theorem
+    Args: two boxes with format  [label, x1, y1, x2, y2, x3, y3, x4, y4]
+    Returns: True if two boxes are overlapping
+    """
+    def orthogonal(v):
+        # Return a 90 degree clockwise rotation of the vector v
+        return np.array([-v[1], v[0]])
+
+    def project(vertices, axis):
+        # project vertices [[1,2], [3,4], [5,6], [7,8]] onto axis [x,y]
+        dots = [np.dot(vertex, axis) for vertex in vertices] / np.linalg.norm(axis)
+        return [min(dots), max(dots)]
+
     edges = edges_of(convert_to_vertices(boxA)) + edges_of(convert_to_vertices(boxB))
     axes = [orthogonal(edge) for edge in edges]
+
     for axis in axes:
         projectionA = project(convert_to_vertices(boxA), axis)
         projectionB = project(convert_to_vertices(boxB), axis)
-        if not project_overlap(projectionA, projectionB):
+        if not (projectionA[0] < projectionB[1]) and (projectionB[0] < projectionA[1]):
             return False # box A and box B not overlapping, separating axis found
     return True # box A and box B is overlapping, no separating axis found
 
+## -------------------------------------------------------------------------------------------------------
+## ---------------------- FIND INTERSECTION AREA IF TWO OBBS ARE OVERLAPPING ----------------------
+## ----------------------------------------------------------------------------------------------------
 
-# # --------- Checking Purpose
-# print("vertices of A:", convert_to_vertices(boxA))
-# print("edges(vector) of A:", edges_of(convert_to_vertices(boxA)))
-# print("first edge of A:", edges_of(convert_to_vertices(boxA))[0])
-# print("orthogonal of that edge:", orthogonal(edges_of(convert_to_vertices(boxA))[0]))
-# print("projection box A onto a first edge of A", project(convert_to_vertices(boxA), edges_of(convert_to_vertices(boxA))[0]))
-# print("projection box B onto a first edge of A", project(convert_to_vertices(boxB), edges_of(convert_to_vertices(boxA))[0]))
-# print(project_overlap(convert_to_vertices(boxA), convert_to_vertices(boxB)))
-# print(is_intersect(boxA, boxB))
-# print(is_intersect(boxA, boxC))
-# print(is_intersect(boxB, boxC))
-# print(is_intersect(boxD, boxE))
+def intersection_area_shapely(boxA, boxB):
+    # Compute the intersection area using shapely library
+    if is_intersect(boxA, boxB):
+        polyA = Polygon(convert_to_vertices(boxA))
+        polyB = Polygon(convert_to_vertices(boxB))
+        return polyA.intersection(polyB).area
+    else:
+        return None
+
+def cxyxyxyxy2xywhr(box):
+    """
+    Converts bounding box with format [class x1 y1 x2 y2 x3 y3 x4 y4] to [cx, cy, w, h, rotation] format
+    Args: bounding box with format [class x1 y1 x2 y2 x3 y3 x4 y4]
+    Return: [cx, cy, w, h, rotation] format, rotation is returned in radians from 0 to pi/2
+    """
+
+    # Calculate center
+    cx = np.mean(np.array([box[1], box[3], box[5], box[7]]))
+    cy = np.mean(np.array([box[2], box[4], box[6], box[8]]))
+
+    # Calculate width and height
+    vertices = convert_to_vertices(box)
+    w = np.mean(np.array([math.dist(vertices[0],vertices[1]), math.dist(vertices[2],vertices[3])]))
+    h = np.mean(np.array([math.dist(vertices[1],vertices[2]), math.dist(vertices[3],vertices[0])]))
+
+    # Calculate (simplify) angle
+    dx = vertices[1][0] - vertices[0][0]
+    dy = vertices[1][1] - vertices[0][1]
+    rot = math.degrees(math.atan2(dy, dx))/180*np.pi
+
+    # # Compare with cv2.minAreaRect
+    # points = np.array(box[1:]).reshape((-1, 2)).astype(np.float32)
+    # rect = cv2.minAreaRect(points)
+
+    return [cx, cy, w, h, rot]
+
+
+def line_intersection(line1, line2):
+    """
+    Finding the intersection point between two lines
+    Args: lines that have format [[x1, y1], [x2, y2]]
+    Return: [cx, cy, w, h, rotation] format, rotation is returned in radians from 0 to pi/2
+    """
+    x1, y1, x2, y2 = line1[0][0], line1[0][1], line1[1][0], line1[1][1]
+    x3, y3, x4, y4 = line2[0][0], line2[0][1], line2[1][0], line2[1][1]
+
+    # Calculate the denominator
+    denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1)
+
+    # Check if lines are parallel
+    if denom == 0:
+        return None
+
+    # Calculate the intersection point
+    ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom
+    ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom
+
+    # Check if the intersection point lies on both line segments
+    if ua < 0 or ua > 1 or ub < 0 or ub > 1:
+        return None
+
+    # Calculate the (x, y) coordinates of the intersection point
+    x = x1 + ua * (x2 - x1)
+    y = y1 + ua * (y2 - y1)
+
+    return [x, y]
+
+def intersection_area_diy(boxA, boxB):
+    """
+    Implementation of Sutherland Polygon Clipping for intersection area computation
+    Args: two OBBs with format  [class, x1, y1, x2, y2, x3, y3, x4, y4] with shape (1,9)
+    Returns: intersection area with shape (1,1)
+    """
+    subject_vertices = convert_to_vertices(boxA)
+    clipper_vertices = convert_to_vertices(boxB)
+    subject_polygon = Path(subject_vertices) # box A acts as subject polygon, the polygon to be clipped
+    clipper_polygon = Path(clipper_vertices) # box B acts as clipper polygon
+
+    intersection_points = []
+
+    # Identify vertices from each polygon that are contained within the other polygon.
+    for i in range(len(clipper_vertices)):
+        if subject_polygon.contains_point(clipper_vertices[i]):
+            intersection_points.append(clipper_vertices[i]) # These vertices will be part of the intersection area.
+
+    for i in range(len(subject_vertices)):
+        if clipper_polygon.contains_point(subject_vertices[i]):
+            intersection_points.append(subject_vertices[i]) # These vertices will be part of the intersection area.
+
+    # Edge Intersection Points become new vertices in the intersection polygon
+    len_clipper = len(clipper_vertices)
+    len_subject = len(subject_vertices)
+    for i in range(len_clipper):
+        for j in range(len_subject):
+            line1 = ([clipper_vertices[i], clipper_vertices[(i+1) % len_clipper]])
+            line2 = ([subject_vertices[j], subject_vertices[(j+1) % len_subject]])
+            point = line_intersection(line1, line2)
+
+            # if point is not None:
+            #     intersection_points.append(point)
+            # if point in intersection_points:
+            #     print(point)
+
+    return intersection_points
+
+## ------------------ Checking Purpose
+boxA = np.array([0, 0.1, 0.2, 0.9, 0.2, 0.9, 0.8, 0.1, 0.8])
+boxB = np.array([0, 0.5, 0.9, 0.9, 0.9, 0.9, 1.0, 0.5, 1.0])
+boxC = np.array([0, 0.2, 0.1, 0.4, 0.1, 0.4, 0.9, 0.2, 0.9])
+boxD = np.array([0, 0.6, 0.1, 0.9, 0.4, 0.7, 0.8, 0.4, 0.5])
+boxE = np.array([0, 0.2, 0.1, 0.4, 0.3, 0.3, 0.4, 0.1, 0.2])
+
+print(cxyxyxyxy2xywhr(boxA))
+print(cxyxyxyxy2xywhr(boxB))
+print(cxyxyxyxy2xywhr(boxC))
+print(cxyxyxyxy2xywhr(boxD))
+print(cxyxyxyxy2xywhr(boxE))
+print("------------------------")
+print(intersection_area_diy(boxA, boxE))
+
+# print("box A intersect box C area:", intersection_area_shapely(boxA, boxC))
+# print("intersection points:", intersection_area_diy(boxA, boxC))
+# print("box A intersect box D area:", intersection_area_shapely(boxA, boxD))
+# print("intersection points:", intersection_area_diy(boxA, boxD))
+# print("box A intersect box E area:", intersection_area_shapely(boxA, boxE))
+# print("intersection points:", intersection_area_diy(boxA, boxE))
+# print("box C intersect box E area:", intersection_area_shapely(boxC, boxE))
+# print("intersection points:", intersection_area_diy(boxC, boxE))
+
+
+
