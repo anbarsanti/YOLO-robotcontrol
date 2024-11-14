@@ -9,6 +9,8 @@ from matplotlib.path import Path
 import cv2
 from openpyxl.utils.units import dxa_to_cm
 from shapely.geometry import Polygon, Point, LineString
+import torch
+
 
 # Useful sources:
 # https://programmerart.weebly.com/separating-axis-theorem.html
@@ -119,6 +121,24 @@ def cxyxyxyxy2xywhr(box):
 
     return [cx, cy, w, h, rot]
 
+def cxyxyxyxy2xyxyxy(box):
+    """
+    Converts bounding box with format [class x1 y1 x2 y2 x3 y3 x4 y4] to [x1 y1 x2 y2 x3 y3] as image feature vector
+    x1 y1 and x2 y2 represent the midpoint on the adjacent two sides of the rotating bounding box
+    x3 y3 denotes the center of rotation bounding box
+    Args: bounding box with format [class x1 y1 x2 y2 x3 y3 x4 y4]
+    Return: image feature vector with [x1 y1 x2 y2 x3 y3]
+    """
+
+    # Calculate center
+    x3 = np.mean(np.array([box[1], box[3], box[5], box[7]]))
+    y3 = np.mean(np.array([box[2], box[4], box[6], box[8]]))
+
+    vertices = convert_to_vertices(box)
+    x1, y1 = np.mean([vertices[0], vertices[1]], axis=0).tolist()
+    x2, y2 = np.mean([vertices[0], vertices[3]], axis=0).tolist()
+
+    return [x1, y1, x2, y2, x3, y3]
 
 def line_intersection(line1, line2):
     """
@@ -172,12 +192,12 @@ def sort_points_clockwise(points):
     return sorted_points.tolist()
 
 
-def intersection_area_diy(boxA, boxB):
+def intersection_points_diy(boxA, boxB):
     """
     Implementation of Polygon Clipping for intersection area computation
     Here I am not implementing Sutherland Polygon Clipping since it does not cover the edge that intersect the other edge twice
     Args: two OBBs with format  [class, x1, y1, x2, y2, x3, y3, x4, y4] with shape (1,9)
-    Returns: intersection area with shape (1,1)
+    Returns: intersection points with shape (1,p)
     """
     subject_vertices = convert_to_vertices(boxA)
     clipper_vertices = convert_to_vertices(boxB)
@@ -211,7 +231,14 @@ def intersection_area_diy(boxA, boxB):
     # Sorting the points in clockwise order
     intersection_points = sort_points_clockwise(intersection_points)
 
-    # Finding Area using the Triangle formula by Mauren Abreu de Souza
+    return intersection_points
+
+def intersection_area_diy(intersection_points):
+    """
+    Compute the Area using Triangle Formula byMauren Abreu de Souza
+    Args: list of intersection points with shape (1,p)
+    Returns: intersection area with shape (1,1)
+    """
     len_points = len(intersection_points)
     area = 0.0
     for i in range(len_points):
@@ -223,6 +250,26 @@ def intersection_area_diy(boxA, boxB):
 
     return area
 
+## -------------------------------------------------------------------------------------------------------
+## ---------------------- DEFINE THE JACOBIAN MATRICES -------------------------------------------------
+## ----------------------------------------------------------------------------------------------------
+
+
+# J_alpha, Jacobian Matrix that mapping from intersection points/area to image space
+def construct_J_alpha(intersection_points):
+    len_points = len(intersection_points)
+    J_alpha = []
+    for i in range(len_points):
+        j = (i + 1) % len_points
+        k = (i + len_points) % len_points
+        J_alpha.append(intersection_points[j][1] - intersection_points[k][1])
+        J_alpha.append(intersection_points[k][0] - intersection_points[j][0])
+
+    return J_alpha
+
+# J_o, Jacobian Matrix which maps xywhr format space into the image space (image feature vector with )
+J_o = torch.tensor()
+
 
 ## ------------------ Checking Purpose
 boxA = np.array([0, 0.1, 0.2, 0.9, 0.2, 0.9, 0.8, 0.1, 0.8])
@@ -230,32 +277,20 @@ boxB = np.array([0, 0.5, 0.9, 0.9, 0.9, 0.9, 1.0, 0.5, 1.0])
 boxC = np.array([0, 0.2, 0.1, 0.4, 0.1, 0.4, 0.9, 0.2, 0.9])
 boxD = np.array([0, 0.6, 0.1, 0.9, 0.4, 0.7, 0.8, 0.4, 0.5])
 boxE = np.array([0, 0.2, 0.1, 0.4, 0.3, 0.3, 0.4, 0.1, 0.2])
-
 print(cxyxyxyxy2xywhr(boxA))
 print(cxyxyxyxy2xywhr(boxB))
 print(cxyxyxyxy2xywhr(boxC))
 print(cxyxyxyxy2xywhr(boxD))
 print(cxyxyxyxy2xywhr(boxE))
 print("------------------------")
-
-print("DIY Area of boxA and boxE", intersection_area_diy(boxA, boxE))
+print("DIY Area of boxA and boxE", intersection_area_diy(intersection_points_diy(boxA, boxE)))
 print("Shapely Area of boxA and boxE", intersection_area_shapely(boxA, boxE))
 print("------------------------")
-print("DIY Area of boxA and boxC", intersection_area_diy(boxA, boxC))
-print("Shapely Area of boxA and boxC", intersection_area_shapely(boxA, boxC))
-print("------------------------")
-print("DIY Area of boxA and boxD", intersection_area_diy(boxA, boxD))
-print("Shapely Area of boxA and boxD", intersection_area_shapely(boxA, boxD))
+interp = intersection_points_diy(boxA, boxE)
+J_alpha = construct_J_alpha(interp)
+print(interp)
+print(J_alpha)
 
-
-# print("box A intersect box C area:", intersection_area_shapely(boxA, boxC))
-# print("intersection points:", intersection_area_diy(boxA, boxC))
-# print("box A intersect box D area:", intersection_area_shapely(boxA, boxD))
-# print("intersection points:", intersection_area_diy(boxA, boxD))
-# print("box A intersect box E area:", intersection_area_shapely(boxA, boxE))
-# print("intersection points:", intersection_area_diy(boxA, boxE))
-# print("box C intersect box E area:", intersection_area_shapely(boxC, boxE))
-# print("intersection points:", intersection_area_diy(boxC, boxE))
-
+print("image feature vector of box A", cxyxyxyxy2xyxyxy(boxA))
 
 
