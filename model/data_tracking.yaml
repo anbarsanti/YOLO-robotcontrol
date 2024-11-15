@@ -6,9 +6,9 @@ val: valid/images
 test: test/images
 
 # Number of Classes
-nc: 5
+nc: 2
 
-# Class Names
-names: 
-  4: honey
-  5: minion
+# Class names
+names:
+  0: honey
+  1: minions

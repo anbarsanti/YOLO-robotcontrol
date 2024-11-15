@@ -25,14 +25,14 @@ model11 = YOLO("yolo11n-obb.yaml")
 
 # Train the model using the '.yaml' dataset for a number of epochs
 train_results = model11.train(
-    data="data.yaml", # path to dataset YAML
-    epochs = 100, # number of training epochs
+    data="model/data.yaml", # path to dataset YAML
+    epochs = 1, # number of training epochs
     imgsz=640, # training image size
     device=0, # device to run on, i.e. device=0 or device=0,1,2,3 or device=cpu
 )
 
 # Evaluate the model's performance on the validation set
-metrics = model11.val(data = "data.yaml")
+metrics = model11.val(data = "model/data.yaml")
 
 # Save the model
 # model11.save("yolo11-obb-11-15.pt")

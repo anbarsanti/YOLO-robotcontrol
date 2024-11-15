@@ -7,7 +7,7 @@ import cv2
 import supervision as sv
 
 # Load a model
-model = YOLO("yolo11-obb-10-17.pt")
+model = YOLO("model/yolo11-obb-10-17-watercan.pt")
 
 # ===================================================== ##
 # ================= DETECT FROM VIDEO ================= ##
