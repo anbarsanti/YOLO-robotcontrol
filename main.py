@@ -23,10 +23,10 @@ import torch
 # All coordination are normalized to values between 0 and 1 relative to image dimensions (allows the annotation to be resolution dependent)
 # YOLO v11 OBB format is already in polygon format
 
-## ---------------------------------------------------------------------------------
-## ---------------------- ARE BOX A AND BOX B INTERSECTING? ----------------------
-## ---------------------- SEPARATION AXIS THEOREM ----------------------------------
-## ---------------------------------------------------------------------------------
+## ===================================================================================
+## ====================== ARE BOX A AND BOX B INTERSECTING? =========================
+## ====================== SEPARATION AXIS THEOREM ====================================
+## ===================================================================================
 
 def convert_to_vertices(box):
     """
@@ -79,9 +79,9 @@ def is_intersect(boxA, boxB):
             return False # box A and box B not overlapping, separating axis found
     return True # box A and box B is overlapping, no separating axis found
 
-## -------------------------------------------------------------------------------------------------------
-## ---------------------- FIND INTERSECTION AREA IF TWO OBBS ARE OVERLAPPING ----------------------
-## ----------------------------------------------------------------------------------------------------
+## ==============================================================================================================
+## ====================== FIND INTERSECTION AREA IF TWO OBBS ARE OVERLAPPING ====================================
+## ==============================================================================================================
 ## Other references using OpenCV: https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga3d476a3417130ae5154aea421ca7ead9
 
 def intersection_area_shapely(boxA, boxB):
@@ -92,7 +92,6 @@ def intersection_area_shapely(boxA, boxB):
         return polyA.intersection(polyB).area
     else:
         return None
-
 
 def cxyxyxyxy2xywhr(box):
     """
@@ -191,7 +190,6 @@ def sort_points_clockwise(points):
 
     return sorted_points.tolist()
 
-
 def intersection_points_diy(boxA, boxB):
     """
     Implementation of Polygon Clipping for intersection area computation
@@ -250,10 +248,9 @@ def intersection_area_diy(intersection_points):
 
     return area
 
-## -------------------------------------------------------------------------------------------------------
-## ---------------------- DEFINE THE JACOBIAN MATRICES -------------------------------------------------
-## ----------------------------------------------------------------------------------------------------
-
+## ==============================================================================================================
+## ============================================ DEFINE THE JACOBIAN MATRICES ====================================
+## ==============================================================================================================
 
 # J_alpha, Jacobian Matrix that mapping from intersection points/area to image space
 def construct_J_alpha(intersection_points):
@@ -270,8 +267,10 @@ def construct_J_alpha(intersection_points):
 # J_o, Jacobian Matrix which maps xywhr format space into the image space (image feature vector with xyxyxy format)
 J_o = torch.tensor()
 
+## ==============================================================================================================
+## ==================================== FOR TESTING PURPOSES =================================================
+## ==============================================================================================================
 
-## ------------------ Checking Purpose
 boxA = np.array([0, 0.1, 0.2, 0.9, 0.2, 0.9, 0.8, 0.1, 0.8])
 boxB = np.array([0, 0.5, 0.9, 0.9, 0.9, 0.9, 1.0, 0.5, 1.0])
 boxC = np.array([0, 0.2, 0.1, 0.4, 0.1, 0.4, 0.9, 0.2, 0.9])

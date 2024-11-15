@@ -1,0 +1,14 @@
+path: ../dataset_tracking/
+
+# Dataset paths
+train: train/images
+val: valid/images
+test: test/images
+
+# Number of Classes
+nc: 5
+
+# Class Names
+names: 
+  4: honey
+  5: minion
