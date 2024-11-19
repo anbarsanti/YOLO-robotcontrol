@@ -29,6 +29,7 @@ train_results = model11.train(
     epochs = 100, # number of training epochs
     imgsz=640, # training image size
     device=0, # device to run on, i.e. device=0 or device=0,1,2,3 or device=cpu
+    multi_scale=True,
 )
 
 # Evaluate the model's performance on the validation set

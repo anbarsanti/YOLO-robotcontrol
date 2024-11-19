@@ -7,7 +7,7 @@ import cv2
 import supervision as sv
 
 # Load a model
-model = YOLO("model/yolo11-obb-10-16-minions.pt")
+model = YOLO("model/yolo11-obb-11-16-minions.pt")
 
 # ===================================================================================== ##
 # ================================= DETECT FROM VIDEO ================================= ##
@@ -38,6 +38,7 @@ model = YOLO("model/yolo11-obb-10-16-minions.pt")
 #
 #     # Run YOLOv8 OBB inference on the frame
 #     results = model(frame)
+#     results = model.track(frame, stream=True, show=True, persist=True, tracker='bytetrack.yaml')  # Tracking with byteTrack
 #
 #     # Draw the detections on the frame
 #     annotated_frame = results[0].plot()
@@ -64,25 +65,49 @@ cap = cv2.VideoCapture(0)  # Use 0 for the default camera, or change to a specif
 # 0 = web camera
 # 2 = depth camera
 
-
 # Set the desired frame width and height
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
+    success, frame = cap.read()
+    if not success:
         break
 
-    # Run YOLOv8 OBB inference on the frame
-    results = model.track(frame, stream=True)
+    # Run YOLOv8 OBB tracking on the frame
+    # Tracking also can be used for OBB
+    results = model.track(frame, stream=True, show=True, persist=True, tracker='bytetrack.yaml') # Tracking with byteTrack
+
+    # # Get the boxes and track IDs (for Horizontal Bounding Boxes)
+    # results_list = list(results)
+    # boxes = results_list[0].boxes.xywh.cpu()
+    # track_ids = results_list[0].boxes.id.int().cpu().tolist()
+
+    # for box in boxes:
+    #     x1, y1, x2, y2 = box.tolist()
+    #     print(f"Bounding box coordinates: x1={x1}, y1={y1}, x2={x2}, y2={y2}")
+
+    results_list = list(results)
+    print(results_list)
 
     # Process and visualize the results
     for r in results:
         annotated_frame = r.plot()
 
+        # # Plot the tracks
+        # for box, track_id in zip(boxes, track_ids):
+        #     x, y, w, h = box
+        #     track = track_history[track_id]
+        #     track.append((float(x), float(y)))  # x, y center point
+        #     if len(track) > 30:  # retain 90 tracks for 90 frames
+        #         track.pop(0)
+        #
+        #     # Draw the tracking lines
+        #     points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
+        #     cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
+
         # Display the annotated frame
-        cv2.imshow("YOLOv11 OBB Inference - Webcam", annotated_frame)
+        cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
 
     # Break the loop if 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -110,7 +135,7 @@ cv2.destroyAllWindows()
 #     color_image = np.asanyarray(color_frame.get_data())
 #
 #     # Run YOLOv8 OBB inference on the frame
-#     results = model.track(color_image, stream=True)
+#     results = model.track(frame, stream=True, show=True, persist=True, tracker='bytetrack.yaml')  # Tracking with byteTrack
 #
 #     # Process and visualize the results
 #     for r in results:
