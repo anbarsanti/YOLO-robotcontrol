@@ -1,13 +1,15 @@
 # Bismillah
+from supervision.tracker.byte_tracker.core import detections2boxes
 from ultralytics import YOLO
 import pyrealsense2 as rs
 import numpy as np
 import cv2
+import csv
 
 import supervision as sv
 
 # Load a model
-model = YOLO("model/yolo11-obb-11-16-minions.pt")
+model = YOLO("model/yolo11n.pt")
 
 # ===================================================================================== ##
 # ================================= DETECT FROM VIDEO ================================= ##
@@ -62,60 +64,58 @@ model = YOLO("model/yolo11-obb-11-16-minions.pt")
 #
 # Open the camera
 cap = cv2.VideoCapture(0)  # Use 0 for the default camera, or change to a specific camera index if needed
-# 0 = web camera
-# 2 = depth camera
+# 0 = web camera, 2 = depth camera
 
 # Set the desired frame width and height
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
+boxes = []
+scores = []
+
 while cap.isOpened():
     success, frame = cap.read()
-    if not success:
-        break
+    if success:
+        # Run YOLOv8 OBB tracking on the frame. Tracking also can be used for OBB
+        # persist = True --> to maintain track continuity between frames
+        results = model.track(frame, stream=True, show=True, persist=True,
+                              tracker='bytetrack.yaml')  # Tracking with byteTrack
 
-    # Run YOLOv8 OBB tracking on the frame
-    # Tracking also can be used for OBB
-    results = model.track(frame, stream=True, show=True, persist=True, tracker='bytetrack.yaml') # Tracking with byteTrack
+        # Process and visualize the results
+        for r in results:
+            annotated_frame = r.plot()
 
-    # # Get the boxes and track IDs (for Horizontal Bounding Boxes)
-    # results_list = list(results)
-    # boxes = results_list[0].boxes.xywh.cpu()
-    # track_ids = results_list[0].boxes.id.int().cpu().tolist()
+            # Results Documentation: https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
+            print(r.boxes.cls) # Class labels for each HBB box. can't be applied in OBB
+            # print(r.boxes.xyxyn) # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
+            # print(r.obb.cls) # only applied in YOLO OBB model
+            # print(r.obb.xyxyxyxyn)  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
 
-    # for box in boxes:
-    #     x1, y1, x2, y2 = box.tolist()
-    #     print(f"Bounding box coordinates: x1={x1}, y1={y1}, x2={x2}, y2={y2}")
 
-    results_list = list(results)
-    print(results_list)
-
-    # Process and visualize the results
-    for r in results:
-        annotated_frame = r.plot()
-
-        # # Plot the tracks
-        # for box, track_id in zip(boxes, track_ids):
-        #     x, y, w, h = box
-        #     track = track_history[track_id]
-        #     track.append((float(x), float(y)))  # x, y center point
-        #     if len(track) > 30:  # retain 90 tracks for 90 frames
-        #         track.pop(0)
-        #
-        #     # Draw the tracking lines
-        #     points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
-        #     cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
+            # for box in r.boxes: # For Horizontal Bounding Boxes
+            #     cords = box.xyxy[0].tolist()
+            #     x1, y1, x2, y2 = [round(x) for x in cords]
+            #     score = box.conf[0].item()  # Assuming the confidence score is available in box.conf
+            #     cls = r[0].names[box.cls[0].item()]
+            #     boxes.append([x1, y1, x2, y2, score, cls])
+            #     scores.append(score)
 
         # Display the annotated frame
         cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
 
-    # Break the loop if 'q' is pressed
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+        # Break the loop if 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    else:
         break
 
 # Release resources
 cap.release()
 cv2.destroyAllWindows()
+
+# print("Boxes:", boxes)
+# print("Scores:", scores)
+
 
 # ## =============================================================================================== ##
 # ## ====================== DETECT FROM INTELREALSENSE CAMERA STREAMING ====================== ##
