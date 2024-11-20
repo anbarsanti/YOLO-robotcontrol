@@ -9,7 +9,8 @@ import csv
 import supervision as sv
 
 # Load a model
-model = YOLO("model/yolo11n.pt")
+model = YOLO("model/yolo11-obb-11-16-minions.pt") # minions for oriented object tracking
+# model = YOLO("model/yolo11n.pt") # object tracking with HBB
 
 # ===================================================================================== ##
 # ================================= DETECT FROM VIDEO ================================= ##
@@ -81,24 +82,35 @@ while cap.isOpened():
         results = model.track(frame, stream=True, show=True, persist=True,
                               tracker='bytetrack.yaml')  # Tracking with byteTrack
 
-        # Process and visualize the results
+        # Process, extract, and visualize the results
         for r in results:
             annotated_frame = r.plot()
 
-            # Results Documentation: https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
-            print(r.boxes.cls) # Class labels for each HBB box. can't be applied in OBB
-            # print(r.boxes.xyxyn) # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
-            # print(r.obb.cls) # only applied in YOLO OBB model
-            # print(r.obb.xyxyxyxyn)  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
+            # Results Documentation:
+            # https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
 
+            # # Print extracted data from object tracking with HBB format
+            # cls = r.boxes.cls # Class labels for each HBB box. can't be applied in OBB
+            # xyxyn = r.boxes.xyxyn # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
+            # len_cls = len(cls)
+            # for i in range(len_cls):
+            #     cxyxyn = [*[(cls[i].tolist())], *(xyxyn[i].tolist())] # Append class with its HBB
+            #     # print(cxyxyn)
+            #     with open('file_hbb.csv', 'a', newline='') as file:
+            #         writer = csv.writer(file)
+            #         writer.writerows([cxyxyn])
 
-            # for box in r.boxes: # For Horizontal Bounding Boxes
-            #     cords = box.xyxy[0].tolist()
-            #     x1, y1, x2, y2 = [round(x) for x in cords]
-            #     score = box.conf[0].item()  # Assuming the confidence score is available in box.conf
-            #     cls = r[0].names[box.cls[0].item()]
-            #     boxes.append([x1, y1, x2, y2, score, cls])
-            #     scores.append(score)
+            # Print extracted data from object tracking with OBB format
+            cls = r.obb.cls # only applied in YOLO OBB model
+            xyxyxyxyn = r.obb.xyxyxyxyn # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
+            len_cls = len(cls)
+            for i in range(len_cls):
+                xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+                cxyxyxyxyn = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its HBB
+                print(cxyxyxyxyn)
+                with open('file_obb.csv', 'a', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerows([cxyxyxyxyn])
 
         # Display the annotated frame
         cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
