@@ -11,7 +11,7 @@ import cv2
 from openpyxl.utils.units import dxa_to_cm
 from shapely.geometry import Polygon, Point, LineString
 import torch
-from sympy import andre
+
 
 # import DIY function on other files
 from jacobian import construct_J_alpha

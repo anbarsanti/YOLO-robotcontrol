@@ -5,16 +5,18 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 import csv
-
+import area
 import supervision as sv
 
-# Load a model
-model = YOLO("model/yolo11-hbb-toy-11-26-2.pt") # toys for HBB object tracking
-# model = YOLO("model/yolo11n.pt") # object tracking with HBB
+from area import intersection_area_HBB, intersection_area_OBB_diy
 
-# ===================================================================================== ##
-# ================================= DETECT FROM VIDEO ================================= ##
-# ===================================================================================== ##
+# Load a model
+# model = YOLO("model/yolo11-hbb-toy-11-26-2.pt") # toys for HBB object tracking
+model = YOLO("model/yolo11n.pt") # object tracking with HBB
+
+# ===================================================================================================== ##
+# ========================================= DETECT FROM VIDEO ========================================= ##
+# ===================================================================================================== ##
 
 # # Set up video path and image path
 # VIDEO_PATH = "test/VID02.mp4"
@@ -59,9 +61,9 @@ model = YOLO("model/yolo11-hbb-toy-11-26-2.pt") # toys for HBB object tracking
 # out.release()
 # cv2.destroyAllWindows()
 
-# # =============================================================================== ##
-# ## ====================== DETECT FROM WEB CAMERA STREAMING ====================== ##
-# ===================================================================================== ##
+# # ==================================================================================================== ##
+# ## ============================== DETECT FROM WEB CAMERA STREAMING =================================== ##
+# ===================================================================================================== ##
 #
 # Open the camera
 cap = cv2.VideoCapture(0)  # Use 0 for the default camera, or change to a specific camera index if needed
@@ -89,28 +91,43 @@ while cap.isOpened():
             # Results Documentation:
             # https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
 
-            # # Print extracted data from object tracking with HBB format
-            # cls = r.boxes.cls # Class labels for each HBB box. can't be applied in OBB
-            # xyxyn = r.boxes.xyxyn # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
-            # len_cls = len(cls)
-            # for i in range(len_cls):
-            #     cxyxyn = [*[(cls[i].tolist())], *(xyxyn[i].tolist())] # Append class with its HBB
-            #     # print(cxyxyn)
-            #     with open('file_hbb.csv', 'a', newline='') as file:
-            #         writer = csv.writer(file)
-            #         writer.writerows([cxyxyn])
+            # Data Extraction from object tracking with HBB format
+            cls = r.boxes.cls # Class labels for each HBB box. can't be applied in OBB
+            xyxyn = r.boxes.xyxyn # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
+            len_cls = len(cls)
+            for i in range(len_cls):
+                cxyxyn = [*[(cls[i].tolist())], *(xyxyn[i].tolist())] # Append class with its HBB
+                cxyxyn_1 = [*[(cls[(i+1) % len_cls].tolist())], *(xyxyn[(i+1) % len_cls].tolist())]
+                # print(cxyxyn)
 
-            # # Print extracted data from object tracking with OBB format
-            # cls = r.obb.cls # only applied in YOLO OBB model
-            # xyxyxyxyn = r.obb.xyxyxyxyn # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
-            # len_cls = len(cls)
-            # for i in range(len_cls):
-            #     xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-            #     cxyxyxyxyn = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its HBB
-            #     print(cxyxyxyxyn)
-            #     with open('file_obb.csv', 'a', newline='') as file:
-            #         writer = csv.writer(file)
-            #         writer.writerows([cxyxyxyxyn])
+                # Calculating the Area of Intersection
+                # intersection_area_HBB(cxyxyn, cxyxyn_1)
+                print("Area of Intersection between class", cls[i].item(), "and class", cls[(i+1) % len_cls].item(), "is", intersection_area_HBB(cxyxyn, cxyxyn_1))
+
+                # Print extracted data from object tracking with HBB format
+                with open('file_hbb.csv', 'a', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerows([cxyxyn])
+
+            # Data Extraction from object tracking with OBB format
+            cls = r.obb.cls # only applied in YOLO OBB model
+            xyxyxyxyn = r.obb.xyxyxyxyn # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
+            len_cls = len(cls)
+            for i in range(len_cls):
+                xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+                xyxyxyxyn_flatten_1 = (np.array((xyxyxyxyn[(i+1) % len_cls].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy_1
+                cxyxyxyxyn = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
+                cxyxyxyxyn_1 = [*[(cls[(i+1) % len_cls].tolist())], *(xyxyxyxyn_flatten_1)]  # Append class with its OBB
+                # print(cxyxyxyxyn)
+
+                # Calculating the Area of Intersection
+                # intersection_area_OBB_diy(cxyxyxyxyn, cxyxyxyxyn_1)
+                print("Area of Intersection between class", cls[i].item(), "and class", cls[(i+1) % len_cls].item(), "is", intersection_area_OBB_diy(cxyxyxyxyn, cxyxyxyxyn_1))
+
+                # Print extracted data from object tracking with OBB format
+                with open('file_obb.csv', 'a', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerows([cxyxyxyxyn])
 
         # Display the annotated frame
         cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
@@ -127,9 +144,9 @@ cv2.destroyAllWindows()
 
 
 
-## =============================================================================================== ##
-## ====================== DETECT FROM INTELREALSENSE CAMERA STREAMING ====================== ##
-## ================================================================================================
+## =============================================================================================================== ##
+## ============================== DETECT FROM INTELREALSENSE CAMERA STREAMING =================================== ##
+## ================================================================================================================ ##
 #
 # pipe = rs.pipeline()
 # cfg  = rs.config()
