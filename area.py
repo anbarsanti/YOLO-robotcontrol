@@ -5,15 +5,18 @@ author: @anbarsanti
 
 import numpy as np
 import math
+import torch
 from matplotlib.path import Path
 import cv2
 from openpyxl.utils.units import dxa_to_cm
 from shapely.geometry import Polygon, Point, LineString
 import torch
 
+# import DIY function on other files
+from jacobian import construct_J_alpha
 
-# Useful sources:
-# https://programmerart.weebly.com/separating-axis-theorem.html
+## ===================================================================================
+## ============================= YOLO HBB AND OBB FORMAT ================================
 
 # YOLO OBB format is class_index x1 y1 x2 y2 x3 y3 x4 y4
 # x1, y1: Coordinates of the first corner point
@@ -23,18 +26,36 @@ import torch
 # All coordination are normalized to values between 0 and 1 relative to image dimensions (allows the annotation to be resolution dependent)
 # YOLO v11 OBB format is already in polygon format
 
+# YOLO HBB format is class_index x_center y_center width height
+
+
 ## ===================================================================================
 ## ====================== ARE BOX A AND BOX B INTERSECTING? =========================
 ## ====================== SEPARATION AXIS THEOREM ====================================
 ## ===================================================================================
+# Useful sources:
+# https://programmerart.weebly.com/separating-axis-theorem.html
 
-def convert_to_vertices(box):
+def convert_HBB_to_vertices(box):
     """
     Convert Oriented Bounding Boxes (OBB) from [label, x1, y1, x2, y2, x3, y3, x4, y4] to [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
     Args:
         box = input box of shape [1,9]
     Returns:
         Converted data in [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
+    """
+    x1y1 = [(box[1]-box[3]/2), (box[2]-box[4]/2)]
+    x2y2 = [(box[1]+box[3]/2), (box[2]+box[4]/2)]
+    return [x1y1, x2y2]
+
+def convert_OBB_to_vertices(box):
+    """
+    Convert Horizontal Bounding Boxes (HBB) from [class_id, x_center, y_center, width, height] to [[x1,y1],[x2,y2]]
+    Where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+    Args:
+        box = input box of shape [1,5] with [class_id, x_center, y_center, width, height]
+    Returns:
+        Converted data in [[x1,y1],[x2,y2]] where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
     """
     vertices = [[box[i], box[i + 1]] for i in range(1, len(box), 2)]
     return vertices
@@ -54,7 +75,7 @@ def edges_of(vertices):
         edges.append(edge)
     return edges
 
-def is_intersect(boxA, boxB):
+def is_OBB_intersect(boxA, boxB):
     """
     Determining if two OBBs are intersecting using Separating Axis Theorem
     Args: two boxes with format  [label, x1, y1, x2, y2, x3, y3, x4, y4]
@@ -69,12 +90,12 @@ def is_intersect(boxA, boxB):
         dots = [np.dot(vertex, axis) for vertex in vertices] / np.linalg.norm(axis)
         return [min(dots), max(dots)]
 
-    edges = edges_of(convert_to_vertices(boxA)) + edges_of(convert_to_vertices(boxB))
+    edges = edges_of(convert_OBB_to_vertices(boxA)) + edges_of(convert_OBB_to_vertices(boxB))
     axes = [orthogonal(edge) for edge in edges]
 
     for axis in axes:
-        projectionA = project(convert_to_vertices(boxA), axis)
-        projectionB = project(convert_to_vertices(boxB), axis)
+        projectionA = project(convert_OBB_to_vertices(boxA), axis)
+        projectionB = project(convert_OBB_to_vertices(boxB), axis)
         if not (projectionA[0] < projectionB[1]) and (projectionB[0] < projectionA[1]):
             return False # box A and box B not overlapping, separating axis found
     return True # box A and box B is overlapping, no separating axis found
@@ -84,11 +105,11 @@ def is_intersect(boxA, boxB):
 ## ==============================================================================================================
 ## Other references using OpenCV: https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga3d476a3417130ae5154aea421ca7ead9
 
-def intersection_area_shapely(boxA, boxB):
+def intersection_area_OBB_shapely(boxA, boxB):
     # Compute the intersection area using shapely library
-    if is_intersect(boxA, boxB):
-        polyA = Polygon(convert_to_vertices(boxA))
-        polyB = Polygon(convert_to_vertices(boxB))
+    if is_OBB_intersect(boxA, boxB):
+        polyA = Polygon(convert_OBB_to_vertices(boxA))
+        polyB = Polygon(convert_OBB_to_vertices(boxB))
         return polyA.intersection(polyB).area
     else:
         return None
@@ -105,7 +126,7 @@ def cxyxyxyxy2xywhr(box):
     cy = np.mean(np.array([box[2], box[4], box[6], box[8]]))
 
     # Calculate width and height
-    vertices = convert_to_vertices(box)
+    vertices = convert_OBB_to_vertices(box)
     w = np.mean(np.array([math.dist(vertices[0],vertices[1]), math.dist(vertices[2],vertices[3])]))
     h = np.mean(np.array([math.dist(vertices[1],vertices[2]), math.dist(vertices[3],vertices[0])]))
 
@@ -133,7 +154,7 @@ def cxyxyxyxy2xyxyxy(box):
     x3 = np.mean(np.array([box[1], box[3], box[5], box[7]]))
     y3 = np.mean(np.array([box[2], box[4], box[6], box[8]]))
 
-    vertices = convert_to_vertices(box)
+    vertices = convert_OBB_to_vertices(box)
     x1, y1 = np.mean([vertices[0], vertices[1]], axis=0).tolist()
     x2, y2 = np.mean([vertices[0], vertices[3]], axis=0).tolist()
 
@@ -190,15 +211,15 @@ def sort_points_clockwise(points):
 
     return sorted_points.tolist()
 
-def intersection_points_diy(boxA, boxB):
+def intersection_points_OBB_diy(boxA, boxB):
     """
     Implementation of Polygon Clipping for intersection area computation
     Here I am not implementing Sutherland Polygon Clipping since it does not cover the edge that intersect the other edge twice
     Args: two OBBs with format  [class, x1, y1, x2, y2, x3, y3, x4, y4] with shape (1,9)
     Returns: intersection points with shape (1,p)
     """
-    subject_vertices = convert_to_vertices(boxA)
-    clipper_vertices = convert_to_vertices(boxB)
+    subject_vertices = convert_OBB_to_vertices(boxA)
+    clipper_vertices = convert_OBB_to_vertices(boxB)
     subject_polygon = Path(subject_vertices) # box A acts as subject polygon, the polygon to be clipped
     clipper_polygon = Path(clipper_vertices) # box B acts as clipper polygon
 
@@ -231,12 +252,13 @@ def intersection_points_diy(boxA, boxB):
 
     return intersection_points
 
-def intersection_area_diy(intersection_points):
+def intersection_area_OBB_diy(boxA, boxB):
     """
     Compute the Area using Triangle Formula byMauren Abreu de Souza
     Args: list of intersection points with shape (1,p)
     Returns: intersection area with shape (1,1)
     """
+    intersection_points = intersection_points_OBB_diy(boxA, boxB)
     len_points = len(intersection_points)
     area = 0.0
     for i in range(len_points):
@@ -249,53 +271,32 @@ def intersection_area_diy(intersection_points):
     return area
 
 ## ==============================================================================================================
-## ============================================ DEFINE THE JACOBIAN MATRICES ====================================
-## ==============================================================================================================
-
-# J_alpha, Jacobian Matrix that mapping from intersection points/area to image space
-def construct_J_alpha(intersection_points):
-    len_points = len(intersection_points)
-    J_alpha = []
-    for i in range(len_points):
-        j = (i + 1) % len_points
-        k = (i + len_points) % len_points
-        J_alpha.append(intersection_points[j][1] - intersection_points[k][1])
-        J_alpha.append(intersection_points[k][0] - intersection_points[j][0])
-
-    return J_alpha
-
-# J_o, Jacobian Matrix which maps xywhr format space into the image space (image feature vector with xyxyxy format)
-J_o = torch.tensor()
-
-## ==============================================================================================================
 ## ==================================== FOR TESTING PURPOSES =================================================
 ## ==============================================================================================================
 
-boxA = np.array([0, 0.1, 0.2, 0.9, 0.2, 0.9, 0.8, 0.1, 0.8])
-boxB = np.array([0, 0.5, 0.9, 0.9, 0.9, 0.9, 1.0, 0.5, 1.0])
-boxC = np.array([0, 0.2, 0.1, 0.4, 0.1, 0.4, 0.9, 0.2, 0.9])
-boxD = np.array([0, 0.6, 0.1, 0.9, 0.4, 0.7, 0.8, 0.4, 0.5])
-boxE = np.array([0, 0.2, 0.1, 0.4, 0.3, 0.3, 0.4, 0.1, 0.2])
-verticesA = convert_to_vertices(boxA)
-verticesB = convert_to_vertices(boxB)
-verticesC = convert_to_vertices(boxC)
-verticesD = convert_to_vertices(boxD)
-verticesE = convert_to_vertices(boxE)
+obbA = np.array([0, 0.1, 0.2, 0.9, 0.2, 0.9, 0.8, 0.1, 0.8])
+obbB = np.array([0, 0.5, 0.9, 0.9, 0.9, 0.9, 1.0, 0.5, 1.0])
+obbC = np.array([0, 0.2, 0.1, 0.4, 0.1, 0.4, 0.9, 0.2, 0.9])
+obbD = np.array([0, 0.6, 0.1, 0.9, 0.4, 0.7, 0.8, 0.4, 0.5])
+obbE = np.array([0, 0.2, 0.1, 0.4, 0.3, 0.3, 0.4, 0.1, 0.2])
+hbbA = np.array([1, 0.7, 0.3, 0.4, 0.4])
+print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbA))
 
-print(cxyxyxyxy2xywhr(boxA))
-print(cxyxyxyxy2xywhr(boxB))
-print(cxyxyxyxy2xywhr(boxC))
-print(cxyxyxyxy2xywhr(boxD))
-print(cxyxyxyxy2xywhr(boxE))
+
+print(cxyxyxyxy2xywhr(obbA))
+print(cxyxyxyxy2xywhr(obbB))
+print(cxyxyxyxy2xywhr(obbC))
+print(cxyxyxyxy2xywhr(obbD))
+print(cxyxyxyxy2xywhr(obbE))
 print("------------------------")
-print("DIY Area of boxA and boxE", intersection_area_diy(intersection_points_diy(boxA, boxE)))
-print("Shapely Area of boxA and boxE", intersection_area_shapely(boxA, boxE))
+print("DIY Area of boxA and boxE", intersection_area_OBB_diy(obbA, obbE))
+print("Shapely Area of boxA and boxE", intersection_area_OBB_shapely(obbA, obbE))
 print("------------------------")
-interp = intersection_points_diy(boxA, boxE)
+interp = intersection_points_OBB_diy(obbA, obbE)
 J_alpha = construct_J_alpha(interp)
 print(interp)
 print(J_alpha)
 
-print("image feature vector of box A", cxyxyxyxy2xyxyxy(boxA))
+print("image feature vector of box A", cxyxyxyxy2xyxyxy(obbA))
 
 
