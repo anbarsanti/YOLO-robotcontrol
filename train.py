@@ -21,19 +21,19 @@ if cuda_available:
     print(f"GPU memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
 
 # Load a model from scratch
-model11 = YOLO("yolo11n-obb.yaml")
+model11 = YOLO("model/yolo11.yaml")
 
 # Train the model using the '.yaml' dataset for a number of epochs
 train_results = model11.train(
-    data="model/data.yaml", # path to dataset YAML
-    epochs = 100, # number of training epochs
+    data="model/dataset_HBB_toy.yaml", # path to dataset YAML
+    epochs = 1000, # number of training epochs
     imgsz=640, # training image size
     device=0, # device to run on, i.e. device=0 or device=0,1,2,3 or device=cpu
     multi_scale=True,
 )
 
 # Evaluate the model's performance on the validation set
-metrics = model11.val(data = "model/data.yaml")
+metrics = model11.val(data = "model/dataset_HBB_toy.yaml")
 
 # Save the model
 # model11.save("yolo11-obb-11-15.pt")

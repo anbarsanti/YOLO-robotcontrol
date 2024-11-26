@@ -9,7 +9,7 @@ import csv
 import supervision as sv
 
 # Load a model
-model = YOLO("model/yolo11-obb-11-16-minions.pt") # minions for oriented object tracking
+model = YOLO("model/yolo11-hbb-toy-11-26-2.pt") # toys for HBB object tracking
 # model = YOLO("model/yolo11n.pt") # object tracking with HBB
 
 # ===================================================================================== ##
@@ -100,17 +100,17 @@ while cap.isOpened():
             #         writer = csv.writer(file)
             #         writer.writerows([cxyxyn])
 
-            # Print extracted data from object tracking with OBB format
-            cls = r.obb.cls # only applied in YOLO OBB model
-            xyxyxyxyn = r.obb.xyxyxyxyn # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
-            len_cls = len(cls)
-            for i in range(len_cls):
-                xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-                cxyxyxyxyn = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its HBB
-                print(cxyxyxyxyn)
-                with open('file_obb.csv', 'a', newline='') as file:
-                    writer = csv.writer(file)
-                    writer.writerows([cxyxyxyxyn])
+            # # Print extracted data from object tracking with OBB format
+            # cls = r.obb.cls # only applied in YOLO OBB model
+            # xyxyxyxyn = r.obb.xyxyxyxyn # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
+            # len_cls = len(cls)
+            # for i in range(len_cls):
+            #     xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+            #     cxyxyxyxyn = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its HBB
+            #     print(cxyxyxyxyn)
+            #     with open('file_obb.csv', 'a', newline='') as file:
+            #         writer = csv.writer(file)
+            #         writer.writerows([cxyxyxyxyn])
 
         # Display the annotated frame
         cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
@@ -125,13 +125,11 @@ while cap.isOpened():
 cap.release()
 cv2.destroyAllWindows()
 
-# print("Boxes:", boxes)
-# print("Scores:", scores)
 
 
-# ## =============================================================================================== ##
-# ## ====================== DETECT FROM INTELREALSENSE CAMERA STREAMING ====================== ##
-# ## ================================================================================================
+## =============================================================================================== ##
+## ====================== DETECT FROM INTELREALSENSE CAMERA STREAMING ====================== ##
+## ================================================================================================
 #
 # pipe = rs.pipeline()
 # cfg  = rs.config()
@@ -147,11 +145,13 @@ cv2.destroyAllWindows()
 #     color_image = np.asanyarray(color_frame.get_data())
 #
 #     # Run YOLOv8 OBB inference on the frame
-#     results = model.track(frame, stream=True, show=True, persist=True, tracker='bytetrack.yaml')  # Tracking with byteTrack
+#     results = model.track(frame, stream=True) #, show=True, persist=True, tracker='bytetrack.yaml')  # Tracking with byteTrack
 #
 #     # Process and visualize the results
 #     for r in results:
 #         annotated_frame = r.plot()
+#
+#     # annotated_frame = results[0].plot()
 #
 #         # Display the annotated frame
 #         cv2.imshow("YOLOv11 OBB Inference - Realsense Camera", annotated_frame)
