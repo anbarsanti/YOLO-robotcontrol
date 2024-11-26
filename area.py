@@ -11,6 +11,7 @@ import cv2
 from openpyxl.utils.units import dxa_to_cm
 from shapely.geometry import Polygon, Point, LineString
 import torch
+from sympy import andre
 
 # import DIY function on other files
 from jacobian import construct_J_alpha
@@ -38,11 +39,13 @@ from jacobian import construct_J_alpha
 
 def convert_HBB_to_vertices(box):
     """
-    Convert Oriented Bounding Boxes (OBB) from [label, x1, y1, x2, y2, x3, y3, x4, y4] to [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
+    Convert Horizontal Bounding Boxes (HBB) from [class_id, x_center, y_center, width, height] to [[x1,y1],[x2,y2]]
+    Where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
     Args:
         box = input box of shape [1,9]
     Returns:
-        Converted data in [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
+        Converted data in [[x1,y1],[x2,y2]] where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+
     """
     x1y1 = [(box[1]-box[3]/2), (box[2]-box[4]/2)]
     x2y2 = [(box[1]+box[3]/2), (box[2]+box[4]/2)]
@@ -50,12 +53,11 @@ def convert_HBB_to_vertices(box):
 
 def convert_OBB_to_vertices(box):
     """
-    Convert Horizontal Bounding Boxes (HBB) from [class_id, x_center, y_center, width, height] to [[x1,y1],[x2,y2]]
-    Where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+    Convert Oriented Bounding Boxes (OBB) from [label, x1, y1, x2, y2, x3, y3, x4, y4] to [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
     Args:
         box = input box of shape [1,5] with [class_id, x_center, y_center, width, height]
     Returns:
-        Converted data in [[x1,y1],[x2,y2]] where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+        Converted data in [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
     """
     vertices = [[box[i], box[i + 1]] for i in range(1, len(box), 2)]
     return vertices
@@ -270,6 +272,32 @@ def intersection_area_OBB_diy(boxA, boxB):
 
     return area
 
+def intersection_area_HBB(boxA, boxB):
+
+    verticesA = convert_HBB_to_vertices(boxA)
+    verticesB = convert_HBB_to_vertices(boxB)
+
+    def is_HBB_intersect(verticesA, verticesB):
+        return (verticesA[0][0] < verticesB[1][0] and
+                verticesA[1][0] > verticesB[0][0] and # boxA.minX <= boxB.maxX and boxA.maxX >= boxB.minX
+                verticesA[0][1] < verticesB[1][1] and
+                verticesA[1][1] > verticesB[0][1]) # (boxA.minY <= boxB.maxY) and (boxA.maxY >= boxB.minY)
+
+    if is_HBB_intersect(verticesA, verticesB):
+        # Calculate the coordinates of intersection rectangle
+        x_left = max(verticesA[0][0], verticesB[0][0])
+        y_top = max(verticesA[0][1], verticesB[0][1])
+        x_right = min(verticesA[1][0], verticesB[1][0])
+        y_bottom = min(verticesA[1][1], verticesB[1][1])
+
+        area = (x_right-x_left)*(y_bottom-y_top)
+
+    else:
+        area = 0
+
+    return area
+
+
 ## ==============================================================================================================
 ## ==================================== FOR TESTING PURPOSES =================================================
 ## ==============================================================================================================
@@ -280,23 +308,26 @@ obbC = np.array([0, 0.2, 0.1, 0.4, 0.1, 0.4, 0.9, 0.2, 0.9])
 obbD = np.array([0, 0.6, 0.1, 0.9, 0.4, 0.7, 0.8, 0.4, 0.5])
 obbE = np.array([0, 0.2, 0.1, 0.4, 0.3, 0.3, 0.4, 0.1, 0.2])
 hbbA = np.array([1, 0.7, 0.3, 0.4, 0.4])
+hbbC = np.array([1, 0.8, 0.8, 0.2, 0.2])
+hbbD = np.array([1, 0.7, 0.55, 0.2, 0.3])
+
 print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbA))
+print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbC))
+print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbD))
+print(intersection_area_HBB(hbbA, hbbC))
+print(intersection_area_HBB(hbbA, hbbD))
+print(intersection_area_HBB(hbbC, hbbD))
 
 
-print(cxyxyxyxy2xywhr(obbA))
-print(cxyxyxyxy2xywhr(obbB))
-print(cxyxyxyxy2xywhr(obbC))
-print(cxyxyxyxy2xywhr(obbD))
-print(cxyxyxyxy2xywhr(obbE))
-print("------------------------")
-print("DIY Area of boxA and boxE", intersection_area_OBB_diy(obbA, obbE))
-print("Shapely Area of boxA and boxE", intersection_area_OBB_shapely(obbA, obbE))
-print("------------------------")
-interp = intersection_points_OBB_diy(obbA, obbE)
-J_alpha = construct_J_alpha(interp)
-print(interp)
-print(J_alpha)
-
-print("image feature vector of box A", cxyxyxyxy2xyxyxy(obbA))
+# print("------------------------")
+# print("DIY Area of boxA and boxE", intersection_area_OBB_diy(obbA, obbE))
+# print("Shapely Area of boxA and boxE", intersection_area_OBB_shapely(obbA, obbE))
+# print("------------------------")
+# interp = intersection_points_OBB_diy(obbA, obbE)
+# J_alpha = construct_J_alpha(interp)
+# print(interp)
+# print(J_alpha)
+#
+# print("image feature vector of box A", cxyxyxyxy2xyxyxy(obbA))
 
 
