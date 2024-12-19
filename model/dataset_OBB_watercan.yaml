@@ -1,0 +1,17 @@
+path: ../dataset_OBB_watercan/
+
+# Dataset paths
+train: train/images
+val: valid/images
+test: test/images
+
+# Number of Classes
+nc: 5
+
+# Class Names
+names: 
+  0: water can
+  1: body
+  2: handle
+  3: pot
+  4: spout
