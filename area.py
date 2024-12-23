@@ -11,6 +11,7 @@ import cv2
 from openpyxl.utils.units import dxa_to_cm
 from shapely.geometry import Polygon, Point, LineString
 import torch
+import jacobian
 
 
 # import DIY function on other files
@@ -299,7 +300,7 @@ def intersection_area_HBB(boxA, boxB):
 
 
 ## ==============================================================================================================
-## ==================================== FOR TESTING PURPOSES =================================================
+## ==================================== TESTING PURPOSES =================================================
 ## ==============================================================================================================
 
 obbA = np.array([0, 0.1, 0.2, 0.9, 0.2, 0.9, 0.8, 0.1, 0.8])
@@ -323,10 +324,10 @@ print(intersection_area_HBB(hbbC, hbbD))
 # print("DIY Area of boxA and boxE", intersection_area_OBB_diy(obbA, obbE))
 # print("Shapely Area of boxA and boxE", intersection_area_OBB_shapely(obbA, obbE))
 # print("------------------------")
-# interp = intersection_points_OBB_diy(obbA, obbE)
-# J_alpha = construct_J_alpha(interp)
-# print(interp)
-# print(J_alpha)
+interp = intersection_points_OBB_diy(obbA, obbE)
+J_alpha = construct_J_alpha(interp)
+print("intersection points", interp)
+print(J_alpha)
 #
 # print("image feature vector of box A", cxyxyxyxy2xyxyxy(obbA))
 
