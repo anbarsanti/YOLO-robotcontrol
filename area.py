@@ -11,11 +11,8 @@ import cv2
 from openpyxl.utils.units import dxa_to_cm
 from shapely.geometry import Polygon, Point, LineString
 import torch
-import jacobian
-
-
 # import DIY function on other files
-from jacobian import construct_J_alpha
+from jacobian import *
 
 ## ===================================================================================
 ## ============================= YOLO HBB AND OBB FORMAT ================================
@@ -199,20 +196,20 @@ def sort_points_clockwise(points):
     Args: list of array of points with format [[x, y],[x, y],[x, y],[x, y],...,[x, y]]
     Return: sorted list of array with format [[x, y],[x, y],[x, y],...,[x, y]] in clockwise order
     """
-    # Convert points to numpy array
+    # Convert to numpy array
     points = np.array(points)
-
-    # Step 1: Find the centroid
+    
+    # Calculate centroid
     centroid = np.mean(points, axis=0)
-
-    # Step 2: Calculate angles
+    
+    # Compute angles
     angles = np.arctan2(points[:, 1] - centroid[1], points[:, 0] - centroid[0])
-
-    # Step 3: Sort points based on angles
-    sorted_indices = np.argsort(-angles)  # Negative for clockwise order
+    
+    # Sort points based on angles
+    sorted_indices = np.argsort(angles)
     sorted_points = points[sorted_indices]
 
-    return sorted_points.tolist()
+    return sorted_points
 
 def intersection_points_OBB_diy(boxA, boxB):
     """
@@ -251,9 +248,9 @@ def intersection_points_OBB_diy(boxA, boxB):
                     intersection_points.append(point)
 
     # Sorting the points in clockwise order
-    intersection_points = sort_points_clockwise(intersection_points)
+    sorted_points = sort_points_clockwise(intersection_points)
 
-    return intersection_points
+    return sorted_points
 
 def intersection_area_OBB_diy(boxA, boxB):
     """
@@ -303,32 +300,33 @@ def intersection_area_HBB(boxA, boxB):
 ## ==================================== TESTING PURPOSES =================================================
 ## ==============================================================================================================
 
+# ------------------------------ HBB ---------------------------------
+# hbbA = np.array([1, 0.7, 0.3, 0.4, 0.4])
+# hbbC = np.array([1, 0.8, 0.8, 0.2, 0.2])
+# hbbD = np.array([1, 0.7, 0.55, 0.2, 0.3])
+# print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbA))
+# print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbC))
+# print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbD))
+# print(intersection_area_HBB(hbbA, hbbC))
+# print(intersection_area_HBB(hbbA, hbbD))
+# print(intersection_area_HBB(hbbC, hbbD))
+
+# ------------------------------ OBB ---------------------------------
 obbA = np.array([0, 0.1, 0.2, 0.9, 0.2, 0.9, 0.8, 0.1, 0.8])
 obbB = np.array([0, 0.5, 0.9, 0.9, 0.9, 0.9, 1.0, 0.5, 1.0])
 obbC = np.array([0, 0.2, 0.1, 0.4, 0.1, 0.4, 0.9, 0.2, 0.9])
 obbD = np.array([0, 0.6, 0.1, 0.9, 0.4, 0.7, 0.8, 0.4, 0.5])
 obbE = np.array([0, 0.2, 0.1, 0.4, 0.3, 0.3, 0.4, 0.1, 0.2])
-hbbA = np.array([1, 0.7, 0.3, 0.4, 0.4])
-hbbC = np.array([1, 0.8, 0.8, 0.2, 0.2])
-hbbD = np.array([1, 0.7, 0.55, 0.2, 0.3])
 
-print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbA))
-print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbC))
-print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbD))
-print(intersection_area_HBB(hbbA, hbbC))
-print(intersection_area_HBB(hbbA, hbbD))
-print(intersection_area_HBB(hbbC, hbbD))
+print("------------------------")
+print("DIY Area of boxA and boxD", intersection_area_OBB_diy(obbA, obbD))
+# print("Shapely Area of boxA and boxD", intersection_area_OBB_shapely(obbA, obbD))
+interp = intersection_points_OBB_diy(obbA, obbD)
+print("intersection points:", interp)
 
-
-# print("------------------------")
-# print("DIY Area of boxA and boxE", intersection_area_OBB_diy(obbA, obbE))
-# print("Shapely Area of boxA and boxE", intersection_area_OBB_shapely(obbA, obbE))
-# print("------------------------")
-interp = intersection_points_OBB_diy(obbA, obbE)
 J_alpha = construct_J_alpha(interp)
-print("intersection points", interp)
-print(J_alpha)
-#
-# print("image feature vector of box A", cxyxyxyxy2xyxyxy(obbA))
+print("J_alpha", J_alpha)
+J_a = construct_J_a(interp, 0.02)
+print("J_a", J_a)
 
 
