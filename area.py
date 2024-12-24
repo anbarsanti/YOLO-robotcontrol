@@ -301,6 +301,7 @@ def intersection_area_HBB(boxA, boxB):
 ## ==============================================================================================================
 
 # ------------------------------ HBB ---------------------------------
+# print("----------------------HBB Test--------------------------")
 # hbbA = np.array([1, 0.7, 0.3, 0.4, 0.4])
 # hbbC = np.array([1, 0.8, 0.8, 0.2, 0.2])
 # hbbD = np.array([1, 0.7, 0.55, 0.2, 0.3])
@@ -312,21 +313,24 @@ def intersection_area_HBB(boxA, boxB):
 # print(intersection_area_HBB(hbbC, hbbD))
 
 # ------------------------------ OBB ---------------------------------
+print("----------------------OBB Test--------------------------")
 obbA = np.array([0, 0.1, 0.2, 0.9, 0.2, 0.9, 0.8, 0.1, 0.8])
 obbB = np.array([0, 0.5, 0.9, 0.9, 0.9, 0.9, 1.0, 0.5, 1.0])
 obbC = np.array([0, 0.2, 0.1, 0.4, 0.1, 0.4, 0.9, 0.2, 0.9])
 obbD = np.array([0, 0.6, 0.1, 0.9, 0.4, 0.7, 0.8, 0.4, 0.5])
 obbE = np.array([0, 0.2, 0.1, 0.4, 0.3, 0.3, 0.4, 0.1, 0.2])
-
-print("------------------------")
 print("DIY Area of boxA and boxD", intersection_area_OBB_diy(obbA, obbD))
 # print("Shapely Area of boxA and boxD", intersection_area_OBB_shapely(obbA, obbD))
 interp = intersection_points_OBB_diy(obbA, obbD)
 print("intersection points:", interp)
-
-J_alpha = construct_J_alpha(interp)
+J_alpha = J_alpha(interp)
 print("J_alpha", J_alpha)
-J_a = construct_J_a(interp, 0.02)
+J_a = J_a(interp, 0.02)
 print("J_a", J_a)
+print("")
 
-
+# ------------------------------ Jacobian Test ---------------------------------
+print("----------------------Jacobian Test--------------------------")
+p = np.array([0.5, 0.9, 0.2, 0.1, 0.4, 0.7])
+print("Analytical jacobian J_o:", J_o(p))
+print("Numerical jacobian J_o:", test_J_o(p))

@@ -136,17 +136,72 @@ def J_a(intersection_points, depth):
       J_a.extend([[j],[k]])
    return np.array(J_a)
 
-def J_o(yolo_points):
+def J_o(p):
    """
-   Construct the Jacobian matrix that maps yolo points to image feature points.
+   Construct the Jacobian matrix that maps yolo points to image feature points (3 points)
    Args:
-       yolo_points [cx, cy, w, h, rot]
-   Returns:
        image feature points [x1, y1, x2, y2, x3, y3]
        p_1 and p_2 represent the midpoint on the adjacent two sides of the rotating bounding box
        p_3 denotes the center of rotation bounding box
+   Returns:
+      The jacobian matrix J_o (5x4 matrix)
    """
-   p_1 = [yolo_points[0] - yolo_points[2] / 2, yolo_points[1] - yolo_points[3] / 2]
-   p_2 = [yolo_points[0] + yolo_points[2] / 2, yolo_points[1] + yolo_points[3] / 2]
-   p_3 = [yolo_points[0], yolo_points[1]]
-   return np.array([p_1, p_2, p_3])
+   # Precompute common terms
+   jacobian = np.zeros((5, 6))
+   x1 = p[0]; y1 = p[1]; x2 = p[2]; y2 = p[3]; x3 = p[4]; y3 = p[5]
+   delta_x1 = x3-x1; delta_y1 = y1-y3; delta_y2 = y3-y2; delta_x2 = x3-x2; theta = np.arctan2(delta_y1, delta_x1)
+   denom1 = delta_x1**2 + delta_y1**2; sqrt_denom1 = np.sqrt(denom1)
+   denom2 = delta_x2**2 + delta_y2**2; sqrt_denom2 = np.sqrt(denom2)
+   
+   # Ensure inputs are not zero to avoid division by zero
+   assert denom1 > 0, "Invalid input: delta_x1^2 + delta_y1^2 must be > 0"
+   assert denom2 > 0, "Invalid input: delta_x2^2 + delta_y2^2 must be > 0"
+   
+   # Define the jacobian
+   jacobian [0,:] = [0, 0, 0, 0, 1, 0]
+   jacobian [1,:] = [0, 0, 0, 0, 0, 1]
+   jacobian [2,:] = [-2*delta_x1/sqrt_denom1, 2*delta_y1/sqrt_denom1, 0, 0, 2*delta_x1/sqrt_denom1, -2*delta_y1/sqrt_denom1]
+   jacobian [3,:] = [0, 0, -2*delta_x2/sqrt_denom2, -2*delta_y2/sqrt_denom2, 2*delta_x2/sqrt_denom2, 2*delta_y2/sqrt_denom2]
+   jacobian [4,:] = [delta_y1/denom1, delta_x1/denom1, 0, 0, -delta_y1/denom1, -delta_x1/denom1]
+   return jacobian
+
+def test_J_o(p, epsilon=1e-8):
+   """
+   Use numerical approximation to verify the analytical Jacobian matrix J_o
+   Args:
+      image feature points [x1, y1, x2, y2, x3, y3]
+      p_1 and p_2 represent the midpoint on the adjacent two sides of the rotating bounding box
+      p_3 denotes the center of rotation bounding box
+   Returns: assertion results
+   """
+   # Define the Sigma function
+   def sigma(p):
+      # Precompute common terms
+      x1 = p[0]; y1 = p[1]; x2 = p[2]; y2 = p[3]; x3 = p[4]; y3 = p[5]
+      delta_x1 = x3 - x1; delta_y1 = y1 - y3; delta_y2 = y3 - y2; delta_x2 = x3 - x2; theta = np.arctan2(delta_y1, delta_x1)
+      denom1 = delta_x1 ** 2 + delta_y1 ** 2; sqrt_denom1 = np.sqrt(denom1)
+      denom2 = delta_x2 ** 2 + delta_y2 ** 2; sqrt_denom2 = np.sqrt(denom2)
+      return [x3, y3, 2*sqrt_denom1, 2*sqrt_denom2, theta]
+   
+   # Build the Jacobian matrix using numerical approach
+   n = len(p)
+   m = len(sigma(p))
+   jacobian = np.zeros((m, n))
+   
+   for i in range(n):
+      p_plus = p.copy()
+      p_plus[i] += epsilon
+      p_minus = p.copy()
+      p_minus[i] -= epsilon
+      jacobian[:,i] = np.subtract(sigma(p_plus),sigma(p_minus)) / (2*epsilon)
+      # print(jacobian.shape)
+      # print(jacobian)
+
+   # Test
+   # The function below compares two arrays, numerical_jacobian and analytical_jacobian, element wise
+   # Checking if they are equal within the specified tolerance atol
+   # numerical_jacobian = sigma(p)
+   # analytical_jacobian = J_o(p)
+   # return np.testing.assert_allclose(numerical_jacobian, analytical_jacobian, rtol = 1e-04, atol=1e-05)
+   return jacobian
+   
