@@ -28,7 +28,10 @@ def J_alpha(intersection_points):
         k = (i + len_points) % len_points
         J_alpha.append(intersection_points[j][1] - intersection_points[k][1])
         J_alpha.append(intersection_points[k][0] - intersection_points[j][0])
-
+       
+    # Compute the determinant to check singularity
+    determinant = np.linalg.det(J_alpha)
+    
     return np.array(J_alpha)
 
 def J_I_8x3 (x1, y1, x2, y2, x3, y3, x4, y4, depth):
@@ -134,6 +137,10 @@ def J_a(intersection_points, depth):
       j = [f_x/depth, 0, -p[i][0]/depth, -p[i][0]*p[i][1]/f_x, (f_x*f_x + p[i][0]*p[i][0])/f_x, -p[i][1]]
       k = [0, f_y/depth, -p[i][1]/depth, -(f_y*f_y + p[i][1]*p[i][1])/f_y, p[i][0]*p[i][1]/f_y, p[i][0]]
       J_a.extend([[j],[k]])
+   
+   # Compute the determinant to check singularity
+   determinant = np.linalg.det(J_a)
+   
    return np.array(J_a)
 
 def J_o(p):
@@ -163,9 +170,13 @@ def J_o(p):
    jacobian [2,:] = [-2*delta_x1/sqrt_denom1, 2*delta_y1/sqrt_denom1, 0, 0, 2*delta_x1/sqrt_denom1, -2*delta_y1/sqrt_denom1]
    jacobian [3,:] = [0, 0, -2*delta_x2/sqrt_denom2, -2*delta_y2/sqrt_denom2, 2*delta_x2/sqrt_denom2, 2*delta_y2/sqrt_denom2]
    jacobian [4,:] = [delta_y1/denom1, delta_x1/denom1, 0, 0, -delta_y1/denom1, -delta_x1/denom1]
+   
+   # Compute the determinant to check singularity
+   determinant = np.linalg.det(jacobian)
+   
    return jacobian
 
-def test_J_o(p, epsilon=1e-8):
+def numerical_J_o(p, epsilon=1e-8):
    """
    Use numerical approximation to verify the analytical Jacobian matrix J_o
    Args:
@@ -213,10 +224,16 @@ def J_r_linear(q):
 	Return:
 	   3x6 Jacobian matrix (linear part only)
 	"""
+   
    # Get the full 6x6 Jacobian
    J = J_r(q)
+   
    # Extract the 3x6 linear velocity part: from the top 3 rows, and all columnts
    J_linear = J[:3, :]
+   
+   # Compute the determinant to check singularity
+   determinant = np.linalg.det(J_linear)
+   
    return J_linear
 
 def J_r_angular(q):
@@ -227,11 +244,17 @@ def J_r_angular(q):
 	Return:
 	   3x6 Jacobian matrix (angular part only)
 	"""
+   
    # Get the full 6x6 Jacobian
    J = J_r(q)
+   
    # Extract the 3x6 linear velocity part:last three rows in the matrix
-   J_linear = J[-3:, :]
-   return J_linear
+   J_angular = J[-3:, :]
+   
+   # Compute the determinant to check singularity
+   determinant = np.linalg.det(J_angular)
+   
+   return J_angular
 
 def J_r(q):
    """
@@ -245,24 +268,16 @@ def J_r(q):
    Returns:
       Jacobian matrix J_r (6x6 matrix), including linear and angular velocity parts
    """
-   # Define the Sigma function
-
-def ur5_jacobian_paper(q):
-   pi = 3.1415926
-   
-   jacobian = np.zeros([6, 6])
-   d1 = 0.1625
-   d4 = 0.1333;
-   d5 = 0.0997;
-   d6 = 0.0996;
-   a2 = 0.425;
-   a3 = 0.3922;
-   q1 = q[0]
-   q2 = q[1]
-   q3 = q[2]
-   q4 = q[3]
-   q5 = q[4]
-   q6 = q[5]
+   # Precompute & Predefine some terms
+   pi = 3.1415926535
+   jacobian = np.zeros((6, 6))
+   d1 = 0.0892 # 0.1625
+   d4 = 0.1093 # 0.1333
+   d5 = 0.09475 # 0.0997
+   d6 = 0.0825 # 0.0996
+   a2 = 0.425
+   a3 = 0.392
+   q1 = q[0]; q2 = q[1]; q3 = q[2]; q4 = q[3]; q5 = q[4]; q6 = q[5]
    c1 = math.cos(q1)
    c2 = math.cos(q2)
    c3 = math.cos(q3)
@@ -271,7 +286,6 @@ def ur5_jacobian_paper(q):
    c6 = math.cos(q6)
    c23 = math.cos(q2 + q3)
    c234 = math.cos(q2 + q3 + q4)
-   
    s1 = math.sin(q1)
    s2 = math.sin(q2)
    s3 = math.sin(q3)
@@ -280,56 +294,35 @@ def ur5_jacobian_paper(q):
    s6 = math.sin(q6)
    s23 = math.sin(q2 + q3)
    s234 = math.sin(q2 + q3 + q4)
-   r13 = -c1 * c234 * s6 + c5 * s1
-   r23 = -c234 * s1 * s5 - c1 * c5
-   r33 = -s234 * s5
-   px = r13 * d6 + c1 * (s234 * d5 + c23 * a3 + c2 * a2) + s1 * d4
-   py = r23 * d6 + s1 * (s234 * d5 + c23 * a3 + c2 * a2) - c1 * d4
-   pz = r33 * d6 - c234 * d5 + s23 * a3 + s2 * a2 + d1
-   jacobian[0, 0] = -py;
-   jacobian[0, 1] = -c1 * (pz - d1);
-   jacobian[0, 2] = c1 * (s234 * s5 * d6 + c234 * d5 - s23 * a3);
-   jacobian[0, 3] = c1 * (s234 * s5 * d6 + c234 * d5);
-   jacobian[0, 4] = -d6 * (s1 * s5 + c1 * c234 * c5);
-   jacobian[0, 5] = 0;
-   jacobian[1, 0] = px;
-   jacobian[1, 1] = -s1 * (pz - d1);
-   jacobian[1, 2] = s1 * (s234 * s5 * d6 + c234 * d5 - s23 * a3);
-   jacobian[1, 3] = s1 * (s234 * s5 * d6 + c234 * d5);
-   jacobian[1, 4] = d6 * (c1 * s5 - c234 * c5 * s1);
-   jacobian[1, 5] = 0;
-   jacobian[2, 0] = 0;
-   jacobian[2, 1] = s1 * py + c1 * px;
-   jacobian[2, 2] = -c234 * s5 * d6 + s234 * d5 + c23 * a3;
-   jacobian[2, 3] = -c234 * s5 * d6 + s234 * d5;
-   jacobian[2, 4] = -c5 * s234 * d6;
-   jacobian[2, 5] = 0;
-   jacobian[3, 0] = 0;
-   jacobian[3, 1] = s1;
-   jacobian[3, 2] = s1;
-   jacobian[3, 3] = s1;
-   jacobian[3, 4] = c1 * s234;
-   jacobian[3, 5] = r13;
-   jacobian[4, 0] = 0;
-   jacobian[4, 1] = -c1;
-   jacobian[4, 2] = -c1;
-   jacobian[4, 3] = -c1;
-   jacobian[4, 4] = s1 * s234;
-   jacobian[4, 5] = r23;
-   jacobian[5, 0] = 1;
-   jacobian[5, 1] = 0;
-   jacobian[5, 2] = 0;
-   jacobian[5, 3] = 0;
-   jacobian[5, 4] = -c234;
-   jacobian[5, 5] = r33;
+   r13 = -(c1 * c234 * s5) + (c5 * s1)
+   r23 = -(c234 * s1 * s5) - (c1 * c5)
+   r33 = - (s234 * s5)
+   px = (r13*d6) + (c1*((s234*d5) + (c23*a3) + (c2*a2))) + (s1*d4)
+   py = (r23*d6) + (s1*((s234*d5) + (c23*a3) + (c2*a2))) - (c1*d4)
+   pz = (r33*d6) - (c234*d5) + (s23*a3) + (s2*a2) + d1
    
-   jacobian[0, 0] = -jacobian[0, 0];
-   jacobian[0, 1] = -jacobian[0, 1];
-   jacobian[0, 2] = -jacobian[0, 2];
-   jacobian[1, 0] = -jacobian[1, 0];
-   jacobian[1, 1] = -jacobian[1, 1];
-   jacobian[1, 2] = -jacobian[0, 2];
-   jacobian[2, 0] = -jacobian[2, 0];
-   jacobian[2, 1] = -jacobian[2, 1];
-   jacobian[2, 2] = -jacobian[0, 2];
+   # Define the Jacobian Matrix
+   jacobian[0,0]= -py; jacobian[0,1] = -c1*(pz-d1);  jacobian[0,2]= c1*(s234*s5*d6+(c234*d5)-(s23*a3));    jacobian[0,3] = c1*((s234*s5*d6)+(c234*d5)); jacobian[0,4]= -d6*((s1*s5)+(c1*c234*c5)); jacobian[0,5]= 0
+   jacobian[1,0]= px;  jacobian[1,1] = -s1*(pz-d1);   jacobian[1,2]= s1*((s234*s5*d6)+(c234*d5)-(s23*a3)); jacobian[1,3] = s1*((s234*s5*d6)+(c234*d5)); jacobian[1,4] = d6*((c1*s5)-(c234*c5*s1)); jacobian[1,5]= 0
+   jacobian[2,0]= 0;   jacobian[2,1] = (s1*py)+(c1*px); jacobian[2,2]= -(c234*s5*d6)+(s234*d5)+(c23*a3);   jacobian[2,3] = -(c234*s5*d6)+(s234*d5);     jacobian[2,4] = -c5*s234*d6;               jacobian[2,5]= 0
+   
+   jacobian[3,0] = 0; jacobian[3,1] = s1;  jacobian[3,2] = s1;  jacobian[3,3] = s1;  jacobian[3,4] = c1*s234; jacobian[3,5] = r13
+   jacobian[4,0] = 0; jacobian[4,1] = -c1; jacobian[4,2] = -c1; jacobian[4,3] = -c1; jacobian[4,4] = s1*s234; jacobian[4,5] = r23
+   jacobian[5,0] = 1; jacobian[5,1] = 0;   jacobian[5,2] = 0;   jacobian[5,3] = 0;   jacobian[5,4] = -c234;   jacobian[5,5] = r33
+   
+   # Revise (still needs to be checked)
+   jacobian[0, 0] = -jacobian[0, 0]
+   jacobian[0, 1] = -jacobian[0, 1]
+   jacobian[0, 2] = -jacobian[0, 2]
+   jacobian[1, 0] = -jacobian[1, 0]
+   jacobian[1, 1] = -jacobian[1, 1]
+   jacobian[1, 2] = -jacobian[0, 2]
+   jacobian[2, 0] = -jacobian[2, 0]
+   jacobian[2, 1] = -jacobian[2, 1]
+   jacobian[2, 2] = -jacobian[0, 2]
+   
+   # Compute the determinant to check singularity
+   determinant = np.linalg.det(jacobian)
+   
+   # Return the Jacobian Matrix
    return jacobian
