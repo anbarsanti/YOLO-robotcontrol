@@ -165,7 +165,7 @@ def J_o(p):
    jacobian [4,:] = [delta_y1/denom1, delta_x1/denom1, 0, 0, -delta_y1/denom1, -delta_x1/denom1]
    return jacobian
 
-def test_J_o(p, epsilon=1e-8):
+def numerical_J_o(p, epsilon=1e-8):
    """
    Use numerical approximation to verify the analytical Jacobian matrix J_o
    Args:
@@ -245,24 +245,16 @@ def J_r(q):
    Returns:
       Jacobian matrix J_r (6x6 matrix), including linear and angular velocity parts
    """
-   # Define the Sigma function
-
-def ur5_jacobian_paper(q):
-   pi = 3.1415926
-   
-   jacobian = np.zeros([6, 6])
-   d1 = 0.1625
-   d4 = 0.1333;
-   d5 = 0.0997;
-   d6 = 0.0996;
-   a2 = 0.425;
-   a3 = 0.3922;
-   q1 = q[0]
-   q2 = q[1]
-   q3 = q[2]
-   q4 = q[3]
-   q5 = q[4]
-   q6 = q[5]
+   # Precompute & Predefine some terms
+   pi = 3.1415926535
+   jacobian = np.zeros((6, 6))
+   d1 = 0.0892 # 0.1625
+   d4 = 0.1093 # 0.1333
+   d5 = 0.09475 # 0.0997
+   d6 = 0.0825 # 0.0996
+   a2 = 0.425
+   a3 = 0.392
+   q1 = q[0]; q2 = q[1]; q3 = q[2]; q4 = q[3]; q5 = q[4]; q6 = q[5]
    c1 = math.cos(q1)
    c2 = math.cos(q2)
    c3 = math.cos(q3)
@@ -271,7 +263,6 @@ def ur5_jacobian_paper(q):
    c6 = math.cos(q6)
    c23 = math.cos(q2 + q3)
    c234 = math.cos(q2 + q3 + q4)
-   
    s1 = math.sin(q1)
    s2 = math.sin(q2)
    s3 = math.sin(q3)
@@ -280,56 +271,32 @@ def ur5_jacobian_paper(q):
    s6 = math.sin(q6)
    s23 = math.sin(q2 + q3)
    s234 = math.sin(q2 + q3 + q4)
-   r13 = -c1 * c234 * s6 + c5 * s1
-   r23 = -c234 * s1 * s5 - c1 * c5
-   r33 = -s234 * s5
-   px = r13 * d6 + c1 * (s234 * d5 + c23 * a3 + c2 * a2) + s1 * d4
-   py = r23 * d6 + s1 * (s234 * d5 + c23 * a3 + c2 * a2) - c1 * d4
-   pz = r33 * d6 - c234 * d5 + s23 * a3 + s2 * a2 + d1
-   jacobian[0, 0] = -py;
-   jacobian[0, 1] = -c1 * (pz - d1);
-   jacobian[0, 2] = c1 * (s234 * s5 * d6 + c234 * d5 - s23 * a3);
-   jacobian[0, 3] = c1 * (s234 * s5 * d6 + c234 * d5);
-   jacobian[0, 4] = -d6 * (s1 * s5 + c1 * c234 * c5);
-   jacobian[0, 5] = 0;
-   jacobian[1, 0] = px;
-   jacobian[1, 1] = -s1 * (pz - d1);
-   jacobian[1, 2] = s1 * (s234 * s5 * d6 + c234 * d5 - s23 * a3);
-   jacobian[1, 3] = s1 * (s234 * s5 * d6 + c234 * d5);
-   jacobian[1, 4] = d6 * (c1 * s5 - c234 * c5 * s1);
-   jacobian[1, 5] = 0;
-   jacobian[2, 0] = 0;
-   jacobian[2, 1] = s1 * py + c1 * px;
-   jacobian[2, 2] = -c234 * s5 * d6 + s234 * d5 + c23 * a3;
-   jacobian[2, 3] = -c234 * s5 * d6 + s234 * d5;
-   jacobian[2, 4] = -c5 * s234 * d6;
-   jacobian[2, 5] = 0;
-   jacobian[3, 0] = 0;
-   jacobian[3, 1] = s1;
-   jacobian[3, 2] = s1;
-   jacobian[3, 3] = s1;
-   jacobian[3, 4] = c1 * s234;
-   jacobian[3, 5] = r13;
-   jacobian[4, 0] = 0;
-   jacobian[4, 1] = -c1;
-   jacobian[4, 2] = -c1;
-   jacobian[4, 3] = -c1;
-   jacobian[4, 4] = s1 * s234;
-   jacobian[4, 5] = r23;
-   jacobian[5, 0] = 1;
-   jacobian[5, 1] = 0;
-   jacobian[5, 2] = 0;
-   jacobian[5, 3] = 0;
-   jacobian[5, 4] = -c234;
-   jacobian[5, 5] = r33;
+   r13 = -(c1 * c234 * s5) + (c5 * s1)
+   r23 = -(c234 * s1 * s5) - (c1 * c5)
+   r33 = - (s234 * s5)
+   px = (r13*d6) + (c1*((s234*d5) + (c23*a3) + (c2*a2))) + (s1*d4)
+   py = (r23*d6) + (s1*((s234*d5) + (c23*a3) + (c2*a2))) - (c1*d4)
+   pz = (r33*d6) - (c234*d5) + (s23*a3) + (s2*a2) + d1
    
-   jacobian[0, 0] = -jacobian[0, 0];
-   jacobian[0, 1] = -jacobian[0, 1];
-   jacobian[0, 2] = -jacobian[0, 2];
-   jacobian[1, 0] = -jacobian[1, 0];
-   jacobian[1, 1] = -jacobian[1, 1];
-   jacobian[1, 2] = -jacobian[0, 2];
-   jacobian[2, 0] = -jacobian[2, 0];
-   jacobian[2, 1] = -jacobian[2, 1];
-   jacobian[2, 2] = -jacobian[0, 2];
+   # Define the Jacobian Matrix
+   jacobian[0,0]= -py; jacobian[0,1] = -c1*(pz-d1);  jacobian[0,2]= c1*(s234*s5*d6+(c234*d5)-(s23*a3));    jacobian[0,3] = c1*((s234*s5*d6)+(c234*d5)); jacobian[0,4]= -d6*((s1*s5)+(c1*c234*c5)); jacobian[0,5]= 0
+   jacobian[1,0]= px;  jacobian[1,1] = -s1*(pz-d1);   jacobian[1,2]= s1*((s234*s5*d6)+(c234*d5)-(s23*a3)); jacobian[1,3] = s1*((s234*s5*d6)+(c234*d5)); jacobian[1,4] = d6*((c1*s5)-(c234*c5*s1)); jacobian[1,5]= 0
+   jacobian[2,0]= 0;   jacobian[2,1] = (s1*py)+(c1*px); jacobian[2,2]= -(c234*s5*d6)+(s234*d5)+(c23*a3);   jacobian[2,3] = -(c234*s5*d6)+(s234*d5);     jacobian[2,4] = -c5*s234*d6;               jacobian[2,5]= 0
+   
+   jacobian[3,0] = 0; jacobian[3,1] = s1;  jacobian[3,2] = s1;  jacobian[3,3] = s1;  jacobian[3,4] = c1*s234; jacobian[3,5] = r13
+   jacobian[4,0] = 0; jacobian[4,1] = -c1; jacobian[4,2] = -c1; jacobian[4,3] = -c1; jacobian[4,4] = s1*s234; jacobian[4,5] = r23
+   jacobian[5,0] = 1; jacobian[5,1] = 0;   jacobian[5,2] = 0;   jacobian[5,3] = 0;   jacobian[5,4] = -c234;   jacobian[5,5] = r33
+   
+   # Revise (still needs to be checked)
+   jacobian[0, 0] = -jacobian[0, 0]
+   jacobian[0, 1] = -jacobian[0, 1]
+   jacobian[0, 2] = -jacobian[0, 2]
+   jacobian[1, 0] = -jacobian[1, 0]
+   jacobian[1, 1] = -jacobian[1, 1]
+   jacobian[1, 2] = -jacobian[0, 2]
+   jacobian[2, 0] = -jacobian[2, 0]
+   jacobian[2, 1] = -jacobian[2, 1]
+   jacobian[2, 2] = -jacobian[0, 2]
+   
+   # Return the Jacobian Matrix
    return jacobian
