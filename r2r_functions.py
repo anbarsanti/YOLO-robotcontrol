@@ -679,8 +679,8 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
         p_r_box = cxywh2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for reaching box
     
     # Reaching State --> Objective Function
-    f_cx = abs(r_box[0] - d_box[0]) ** 2 - e_cx ** 2
-    f_cy = abs(r_box[1] - d_box[1]) ** 2 - e_cy ** 2
+    f_cx = abs(r_box[0,0] - d_box[0,0]) ** 2 - e_cx ** 2
+    f_cy = abs(r_box[1,0] - d_box[1,0]) ** 2 - e_cy ** 2
     
     # Reaching State --> Energy Function
     P_R = (k_cx / n) * (max(0, f_cx) ** n) + (k_cy / n) * (max(0, f_cy) ** n) + P_r
@@ -689,16 +689,15 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     epsilon_R = np.array([(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0,0] - d_box[0,0]),
                (2 * k_cy / (n ** 2)) * ((max(0, f_cy)) ** (n - 1)) * (r_box[1,0] - d_box[1,0]), 0, 0, 0])
     
-    # Compute the full Jacobian matrix for current joint position values (actual_q)
-    J_r = J_r(actual_q)
-    J_I = J_I(p_r_box)
-    J_o = J_o(p_r_box)
+    # Compute the full Jacobian matrix for current joint position values (actual_q) and position of reaching box
+    J_reaching = (J_o(p_r_box)) @ (J_I(p_r_box)) @ (J_r(actual_q))
     
-    J_reaching = J_o @ J_I @ J_r
+    # Compute the pseudo inverse of the Jacobian matrix using the Moore-Penrose matrix inversion
+    J_reaching_inv = np.linalg.pinv(J_reaching)
     
     # The Controller
     # q_r_dot = -k*((J_r.T) @ J_I)
     
     
-    return epsilon_R, J_Reaching
+    return epsilon_R, J_reaching
 
