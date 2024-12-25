@@ -323,6 +323,35 @@ def J_alpha(intersection_points):
     
     return J_alpha
 
+def J_a(intersection_points, depth):
+    """
+	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
+	 Args:
+		  a list of intersection points
+	 Returns:
+		  J_I (8x3 matrix)
+	 """
+    # Precompute general terms
+    f_x = 618.072
+    f_y = 618.201
+    depth = 1000.0
+    len_points = len(intersection_points)
+    p = intersection_points
+    jacobian = []
+    
+    # Define the Jacobian
+    for i in range(len_points):
+        j = [f_x / depth, 0, -p[i][0] / depth, -p[i][0] * p[i][1] / f_x, (f_x * f_x + p[i][0] * p[i][0]) / f_x,
+             -p[i][1]]
+        k = [0, f_y / depth, -p[i][1] / depth, -(f_y * f_y + p[i][1] * p[i][1]) / f_y, p[i][0] * p[i][1] / f_y, p[i][0]]
+        jacobian.extend([[j], [k]])
+    
+    # Compute the determinant to check singularity
+    J_a = np.array(jacobian)
+    # determinant = np.linalg.det(J_a)
+    
+    return J_a
+
 def J_I(p):
     """
 	 Return the Jacobian matrix that maps 3 points in image space to linear velocity and angular velocity to cartesian space.
@@ -351,35 +380,6 @@ def J_I(p):
         [0, -f_y / depth, y2 / depth, (f_y * f_y + y2 * y2) / f_y, -x2 * y2 / f_y, -x2],
     ]
     return np.array(image_jacobian)
-
-def J_a(intersection_points, depth):
-    """
-	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
-	 Args:
-		  a list of intersection points
-	 Returns:
-		  J_I (8x3 matrix)
-	 """
-    # Precompute general terms
-    f_x = 618.072
-    f_y = 618.201
-    depth = 1000.0
-    len_points = len(intersection_points)
-    p = intersection_points
-    jacobian = []
-
-    # Define the Jacobian
-    for i in range(len_points):
-        j = [f_x / depth, 0, -p[i][0] / depth, -p[i][0] * p[i][1] / f_x, (f_x * f_x + p[i][0] * p[i][0]) / f_x,
-             -p[i][1]]
-        k = [0, f_y / depth, -p[i][1] / depth, -(f_y * f_y + p[i][1] * p[i][1]) / f_y, p[i][0] * p[i][1] / f_y, p[i][0]]
-        jacobian.extend([[j], [k]])
-    
-    # Compute the determinant to check singularity
-    J_a = np.array(jacobian)
-    # determinant = np.linalg.det(J_a)
-    
-    return J_a
 
 def J_o(p):
     """
