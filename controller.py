@@ -24,6 +24,7 @@ from r2r_functions import *
 # print(intersection_area_HBB(hbbA, hbbC))
 # print(intersection_area_HBB(hbbA, hbbD))
 # print(intersection_area_HBB(hbbC, hbbD))
+# print("image feature points of hbbA:", cxywh2xyxyxy(hbbA))
 
 # ------------------------------ OBB ---------------------------------
 print("----------------------OBB Test--------------------------")
@@ -40,8 +41,6 @@ interp = intersection_points_OBB_diy(obbA, obbD)
 # # ------------------------------ Jacobian Test ---------------------------------
 # print("----------------------Jacobian Test--------------------------")
 q = np.array([0.23, 0.91, 0.22, 0.12, 0.42, 0.74]).reshape((-1,1))
-epsilon_R, vw_dot, p_dot, gamma_dot = r2r_controller(obbD, obbE, q, OBB=True)
+epsilon_R, J_reaching = r2r_control(obbD, obbE, q, OBB=True)
 print("epsilon_R", epsilon_R)
-print("vw_dot", vw_dot)
-print("p_dot", p_dot)
-print("gamma_dot", gamma_dot)
+print("J_reaching", J_reaching)

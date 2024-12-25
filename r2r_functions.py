@@ -32,7 +32,7 @@ from shapely.geometry import Polygon, Point, LineString
 # Useful sources:
 # https://programmerart.weebly.com/separating-axis-theorem.html
 
-def convert_HBB_to_vertices(box):
+def convert_HBB_to_vertices(hbb):
     """
     Convert Horizontal Bounding Boxes (HBB) from [class_id, x_center, y_center, width, height] to [[x1,y1],[x2,y2]]
     Where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
@@ -42,11 +42,11 @@ def convert_HBB_to_vertices(box):
         Converted data in [[x1,y1],[x2,y2]] where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
 
     """
-    x1y1 = [(box[1]-box[3]/2), (box[2]-box[4]/2)]
-    x2y2 = [(box[1]+box[3]/2), (box[2]+box[4]/2)]
+    x1y1 = [(hbb[1]-hbb[3]/2), (hbb[2]-hbb[4]/2)]
+    x2y2 = [(hbb[1]+hbb[3]/2), (hbb[2]+hbb[4]/2)]
     return [x1y1, x2y2]
 
-def convert_OBB_to_vertices(box):
+def convert_OBB_to_vertices(obb):
     """
     Convert Oriented Bounding Boxes (OBB) from [label, x1, y1, x2, y2, x3, y3, x4, y4] to [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
     Args:
@@ -54,7 +54,7 @@ def convert_OBB_to_vertices(box):
     Returns:
         Converted data in [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
     """
-    vertices = [[box[i], box[i + 1]] for i in range(1, len(box), 2)]
+    vertices = [[obb[i], obb[i + 1]] for i in range(1, len(obb), 2)]
     return vertices
 
 def edges_of(vertices):
@@ -72,7 +72,7 @@ def edges_of(vertices):
         edges.append(edge)
     return edges
 
-def is_OBB_intersect(boxA, boxB):
+def is_OBB_intersect(obbA, obbB):
     """
     Determining if two OBBs are intersecting using Separating Axis Theorem
     Args: two boxes with format  [label, x1, y1, x2, y2, x3, y3, x4, y4]
@@ -87,12 +87,12 @@ def is_OBB_intersect(boxA, boxB):
         dots = [np.dot(vertex, axis) for vertex in vertices] / np.linalg.norm(axis)
         return [min(dots), max(dots)]
 
-    edges = edges_of(convert_OBB_to_vertices(boxA)) + edges_of(convert_OBB_to_vertices(boxB))
+    edges = edges_of(convert_OBB_to_vertices(obbA)) + edges_of(convert_OBB_to_vertices(obbB))
     axes = [orthogonal(edge) for edge in edges]
 
     for axis in axes:
-        projectionA = project(convert_OBB_to_vertices(boxA), axis)
-        projectionB = project(convert_OBB_to_vertices(boxB), axis)
+        projectionA = project(convert_OBB_to_vertices(obbA), axis)
+        projectionB = project(convert_OBB_to_vertices(obbB), axis)
         if not (projectionA[0] < projectionB[1]) and (projectionB[0] < projectionA[1]):
             return False # box A and box B not overlapping, separating axis found
     return True # box A and box B is overlapping, no separating axis found
@@ -102,28 +102,28 @@ def is_OBB_intersect(boxA, boxB):
 ## ==============================================================================================================
 ## Other references using OpenCV: https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga3d476a3417130ae5154aea421ca7ead9
 
-def intersection_area_OBB_shapely(boxA, boxB):
+def intersection_area_OBB_shapely(obbA, obbB):
     # Compute the intersection area using shapely library
-    if is_OBB_intersect(boxA, boxB):
-        polyA = Polygon(convert_OBB_to_vertices(boxA))
-        polyB = Polygon(convert_OBB_to_vertices(boxB))
+    if is_OBB_intersect(obbA, obbB):
+        polyA = Polygon(convert_OBB_to_vertices(obbA))
+        polyB = Polygon(convert_OBB_to_vertices(obbB))
         return polyA.intersection(polyB).area
     else:
         return None
 
-def cxyxyxyxy2xywhr(box):
+def cxyxyxyxy2xywhr(OBB):
     """
     Converts bounding box with format [class x1 y1 x2 y2 x3 y3 x4 y4] to [cx, cy, w, h, rotation] format
     Args: bounding box with format [class x1 y1 x2 y2 x3 y3 x4 y4]
-    Return: [cx, cy, w, h, rotation] format, rotation is returned in radians from 0 to pi/2
+    Return: [cx, cy, w, h, rotation] format, rotation is returned in radians from 0 to pi/2, as a column vector with shape (1,5)
     """
 
     # Calculate center
-    cx = np.mean(np.array([box[1], box[3], box[5], box[7]]))
-    cy = np.mean(np.array([box[2], box[4], box[6], box[8]]))
+    cx = np.mean(np.array([OBB[1], OBB[3], OBB[5], OBB[7]]))
+    cy = np.mean(np.array([OBB[2], OBB[4], OBB[6], OBB[8]]))
 
     # Calculate width and height
-    vertices = convert_OBB_to_vertices(box)
+    vertices = convert_OBB_to_vertices(OBB)
     w = np.mean(np.array([math.dist(vertices[0],vertices[1]), math.dist(vertices[2],vertices[3])]))
     h = np.mean(np.array([math.dist(vertices[1],vertices[2]), math.dist(vertices[3],vertices[0])]))
 
@@ -136,27 +136,47 @@ def cxyxyxyxy2xywhr(box):
     # points = np.array(box[1:]).reshape((-1, 2)).astype(np.float32)
     # rect = cv2.minAreaRect(points)
 
-    return [cx, cy, w, h, rot]
+    return np.array([cx, cy, w, h, rot]).reshape(-1,1)
 
-def cxyxyxyxy2xyxyxy(box):
+def cxyxyxyxy2xyxyxy(OBB):
     """
-    Converts bounding box with format [class x1 y1 x2 y2 x3 y3 x4 y4] to [x1 y1 x2 y2 x3 y3] as image feature vector
+    Converts horizontal bounding box with format [class x1 y1 x2 ] to [x1 y1 x2 y2 x3 y3] as image feature vector
     x1 y1 and x2 y2 represent the midpoint on the adjacent two sides of the rotating bounding box
     x3 y3 denotes the center of rotation bounding box
     Args: bounding box with format [class x1 y1 x2 y2 x3 y3 x4 y4]
-    Return: image feature vector with [x1 y1 x2 y2 x3 y3]
+    Return: image feature vector with [x1 y1 x2 y2 x3 y3] as a column vector with shape (5,1)
     """
 
     # Calculate center
-    x3 = np.mean(np.array([box[1], box[3], box[5], box[7]]))
-    y3 = np.mean(np.array([box[2], box[4], box[6], box[8]]))
+    x3 = np.mean(np.array([OBB[1], OBB[3], OBB[5], OBB[7]]))
+    y3 = np.mean(np.array([OBB[2], OBB[4], OBB[6], OBB[8]]))
 
-    vertices = convert_OBB_to_vertices(box)
+    vertices = convert_OBB_to_vertices(OBB)
     x1, y1 = np.mean([vertices[0], vertices[1]], axis=0).tolist()
     x2, y2 = np.mean([vertices[0], vertices[3]], axis=0).tolist()
 
-    return [x1, y1, x2, y2, x3, y3]
+    return np.array([x1, y1, x2, y2, x3, y3]).reshape(-1,1)
 
+def cxywh2xyxyxy(HBB):
+    """
+    Converts bounding box with format [class x_center y_center width height] to [x1 y1 x2 y2 x3 y3] as image feature vector
+    x1 y1 and x2 y2 represent the midpoint on the adjacent two sides of the rotating bounding box
+    x3 y3 denotes the center of horizontal bounding box
+    Args:
+        horizontal bounding box with format [class x_center y_center width height]
+    Return:
+        image feature vector with [x1 y1 x2 y2 x3 y3]
+    """
+    # Calculate
+    x1 = HBB[1] - (HBB[3]/2)
+    y1 = HBB[2]
+    x2 = HBB[1]
+    y2 = HBB[2] - (HBB[4]/2)
+    x3 = HBB[1]
+    y3 = HBB[2]
+    
+    return np.array([x1, y1, x2, y2, x3, y3]).reshape(-1,1)
+    
 def line_intersection(line1, line2):
     """
     Finding the intersection point between two lines
@@ -625,13 +645,15 @@ def J_r(q):
     # Return the Jacobian Matrix
     return jacobian
 
-def r2r_controller(reaching_box, desired_box, q, OBB=True):
+def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     """
 	 Construct the controller that consists of 4 steps: (1) Reaching, (2) Overlapping,
 	 (3)Scaling & Screwing, and finally, (4) Desired Overlapping.
+	 Source: https://www.rosroboticslearning.com/jacobian
 	 Args:
 		 reaching_box: the reaching target in YOLO OBB format
 		 desired_box: the desired target in YOLO OBB format
+		 actual_q: numpy array of joint angles [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector
 		 YOLO HBB format is class_index x_center y_center width height
 	 Returns:
 		 q_dot, the joint velocity of UR5e robotic arm
@@ -646,13 +668,15 @@ def r2r_controller(reaching_box, desired_box, q, OBB=True):
     P_r = 0.002
     n = 2
     
-    # Conversion for OBB or HBB
+    # Conversion for OBB or HBB to xywhr format
     if OBB:
         r_box = cxyxyxyxy2xywhr(reaching_box)
         d_box = cxyxyxyxy2xywhr(desired_box)
+        p_r_box = cxyxyxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for reaching box
     else:  # HBB
-        r_box = reaching_box[1:5]
-        d_box = desired_box[1:5]
+        r_box = np.array([reaching_box[1:5], 0]).reshape(-1,1)
+        d_box = np.array([desired_box[1:5], 0]).reshape(-1,1)
+        p_r_box = cxywh2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for reaching box
     
     # Reaching State --> Objective Function
     f_cx = abs(r_box[0] - d_box[0]) ** 2 - e_cx ** 2
@@ -662,17 +686,19 @@ def r2r_controller(reaching_box, desired_box, q, OBB=True):
     P_R = (k_cx / n) * (max(0, f_cx) ** n) + (k_cy / n) * (max(0, f_cy) ** n) + P_r
     
     # Differentiation of P_R
-    epsilon_R = np.array([(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0] - d_box[0]),
-               (2 * k_cy / (n ** 2)) * ((max(0, f_cy)) ** (n - 1)) * (r_box[1] - d_box[1]), 0, 0, 0])
+    epsilon_R = np.array([(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0,0] - d_box[0,0]),
+               (2 * k_cy / (n ** 2)) * ((max(0, f_cy)) ** (n - 1)) * (r_box[1,0] - d_box[1,0]), 0, 0, 0])
     
-    # Compute the Jacobian
-    vw_dot = J_r(q) @ q
-    p_dot = J_I(vw_dot) @ vw_dot
-    gamma_dot = J_o(p_dot) @ p_dot
+    # Compute the full Jacobian matrix for current joint position values (actual_q)
+    J_r = J_r(actual_q)
+    J_I = J_I(p_r_box)
+    J_o = J_o(p_r_box)
+    
+    J_reaching = J_o @ J_I @ J_r
     
     # The Controller
     # q_r_dot = -k*((J_r.T) @ J_I)
     
     
-    return epsilon_R, vw_dot, p_dot, gamma_dot
+    return epsilon_R, J_Reaching
 
