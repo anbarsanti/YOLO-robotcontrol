@@ -301,7 +301,6 @@ def intersection_area_HBB(boxA, boxB):
 ## ============================================ DEFINE THE JACOBIAN MATRICES ====================================
 ## ==============================================================================================================
 
-# J_alpha, Jacobian Matrix that mapping from intersection points/area to image space
 def J_alpha(intersection_points):
     """
     Return J_alpha, the Jacobian matrix that maps the area from intersection points to image space.
@@ -324,62 +323,24 @@ def J_alpha(intersection_points):
     
     return J_alpha
 
-
-def J_I_8x3(x1, y1, x2, y2, x3, y3, x4, y4, depth):
-    """
-	 Return the Jacobian matrix that maps 4 points in image space to linear velocity cartesian space.
-	 Args:
-		  4 points and depth
-	 Returns:
-		  J_I (8x3 matrix)
-	 """
-    f_x = 618.072
-    f_y = 618.201
-    image_jacobian = [
-        [-f_x / depth, 0, x1 / depth],
-        [0, -f_y / depth, y1 / depth],
-        [-f_x / depth, 0, x2 / depth],
-        [0, -f_y / depth, y2 / depth],
-        [-f_x / depth, 0, x3 / depth],
-        [0, -f_y / depth, y3 / depth],
-        [-f_x / depth, 0, x4 / depth],
-        [0, -f_y / depth, y4 / depth]
-    ]
-    return np.array(image_jacobian)
-
-
-def J_I_6x3(xc, yc, x1, y1, x2, y2, depth):
-    """
-	 Return the Jacobian matrix that maps 3 points in image space to linear velocity cartesian space.
-	 Args:
-		  3 points and depth
-	 Returns:
-		  J_I (6x3 matrix)
-	 """
-    f_x = 618.072
-    f_y = 618.201
-    image_jacobian = [
-        [-f_x / depth, 0, xc / depth],
-        [0, -f_y / depth, yc / depth],
-        [-f_x / depth, 0, x1 / depth],
-        [0, -f_y / depth, y1 / depth],
-        [-f_x / depth, 0, x2 / depth],
-        [0, -f_y / depth, y2 / depth],
-    ]
-    return np.array(image_jacobian)
-
-
-def J_I_6x6(xc, yc, x1, y1, x2, y2, depth):
+def J_I(p):
     """
 	 Return the Jacobian matrix that maps 3 points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
-		  3 points and depth
+		  image feature points [x1, y1, x2, y2, x3, y3].T in a column vector format
 	 Returns:
 		  J_I (6x6 matrix)
 	 """
+    # Precompute general terms
     f_x = 618.072
     f_y = 618.201
-    # print('depth',depth)
+    depth = 1000.0
+    xc = p[0,0]
+    yc = p[1,0]
+    x1 = p[2,0]
+    y1 = p[3,0]
+    x2 = p[4,0]
+    y2 = p[5,0]
     
     image_jacobian = [
         [-f_x / depth, 0, xc / depth, xc * yc / f_x, -(f_x * f_x + xc * xc) / f_x, yc],
@@ -391,43 +352,23 @@ def J_I_6x6(xc, yc, x1, y1, x2, y2, depth):
     ]
     return np.array(image_jacobian)
 
-
-def J_I_8x6(x1, y1, x2, y2, x3, y3, x4, y4, depth):
-    """
-	 Return the Jacobian matrix that maps 4 points in image space to linear velocity and angular velocity to cartesian space.
-	 Args:
-		  4 points and depth
-	 Returns:
-		  J_I (8x6 matrix)
-	 """
-    f_x = 618.072
-    f_y = 618.201
-    image_jacobian = [
-        [f_x / depth, 0, - x1 / depth, -x1 * y1 / f_x, (f_x * f_x + x1 * x1) / f_x, -y1],
-        [0, f_y / depth, - y1 / depth, -(f_y * f_y + y1 * y1) / f_y, x1 * y1 / f_y, x1],
-        [f_x / depth, 0, - x2 / depth, -x2 * y2 / f_x, (f_x * f_x + x2 * x2) / f_x, -y2],
-        [0, f_y / depth, - y2 / depth, -(f_y * f_y + y2 * y2) / f_y, x2 * y2 / f_y, x2],
-        [f_x / depth, 0, - x3 / depth, -x3 * y3 / f_x, (f_x * f_x + x3 * x3) / f_x, -y3],
-        [0, f_y / depth, - y3 / depth, -(f_y * f_y + y3 * y3) / f_y, x3 * y3 / f_y, x3],
-        [f_x / depth, 0, - x4 / depth, -x4 * y4 / f_x, (f_x * f_x + x4 * x4) / f_x, -y4],
-        [0, f_y / depth, - y4 / depth, -(f_y * f_y + y4 * y4) / f_y, x4 * y4 / f_y, x4]
-    ]
-    return np.array(image_jacobian)
-
-
 def J_a(intersection_points, depth):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
-		  a number of intersection points
+		  a list of intersection points
 	 Returns:
 		  J_I (8x3 matrix)
 	 """
+    # Precompute general terms
+    f_x = 618.072
+    f_y = 618.201
+    depth = 1000.0
     len_points = len(intersection_points)
     p = intersection_points
     jacobian = []
-    f_x = 618.072
-    f_y = 618.201
+
+    # Define the Jacobian
     for i in range(len_points):
         j = [f_x / depth, 0, -p[i][0] / depth, -p[i][0] * p[i][1] / f_x, (f_x * f_x + p[i][0] * p[i][0]) / f_x,
              -p[i][1]]
@@ -440,12 +381,11 @@ def J_a(intersection_points, depth):
     
     return J_a
 
-
 def J_o(p):
     """
 	 Construct the Jacobian matrix that maps yolo points to image feature points (3 points)
 	 Args:
-		  image feature points [x1, y1, x2, y2, x3, y3]
+		  image feature points [x1, y1, x2, y2, x3, y3].T in a column vector format
 		  p_1 and p_2 represent the midpoint on the adjacent two sides of the rotating bounding box
 		  p_3 denotes the center of rotation bounding box
 	 Returns:
@@ -453,12 +393,12 @@ def J_o(p):
 	 """
     # Precompute common terms
     jacobian = np.zeros((5, 6))
-    x1 = p[0];
-    y1 = p[1];
-    x2 = p[2];
-    y2 = p[3];
-    x3 = p[4];
-    y3 = p[5]
+    x1 = p[0,0]
+    y1 = p[1,0]
+    x2 = p[2,0]
+    y2 = p[3,0]
+    x3 = p[4,0]
+    y3 = p[5,0]
     delta_x1 = x3 - x1;
     delta_y1 = y1 - y3;
     delta_y2 = y3 - y2;
@@ -487,12 +427,11 @@ def J_o(p):
     
     return jacobian
 
-
 def numerical_J_o(p, epsilon=1e-8):
     """
 	 Use numerical approximation to verify the analytical Jacobian matrix J_o
 	 Args:
-		 image feature points [x1, y1, x2, y2, x3, y3]
+		 image feature points [x1, y1, x2, y2, x3, y3].T in a column vector format
 		 p_1 and p_2 represent the midpoint on the adjacent two sides of the rotating bounding box
 		 p_3 denotes the center of rotation bounding box
 	 Returns: assertion results
@@ -501,12 +440,12 @@ def numerical_J_o(p, epsilon=1e-8):
     # Define the Sigma function
     def sigma(p):
         # Precompute common terms
-        x1 = p[0];
-        y1 = p[1];
-        x2 = p[2];
-        y2 = p[3];
-        x3 = p[4];
-        y3 = p[5]
+        x1 = p[0, 0]
+        y1 = p[1, 0]
+        x2 = p[2, 0]
+        y2 = p[3, 0]
+        x3 = p[4, 0]
+        y3 = p[5, 0]
         delta_x1 = x3 - x1;
         delta_y1 = y1 - y3;
         delta_y2 = y3 - y2;
@@ -540,12 +479,11 @@ def numerical_J_o(p, epsilon=1e-8):
     # return np.testing.assert_allclose(numerical_jacobian, analytical_jacobian, rtol = 1e-04, atol=1e-05)
     return jacobian
 
-
 def J_r_linear(q):
     """
 	 Compute the 3x6 linear part of the Jacobian matrix for UR5e.
 	 Param:
-		 q: List or array of joint angles [q1, q2, q3, q4, q5, q6]
+		 q: numpy array of joint angles [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector
 	 Return:
 		 3x6 Jacobian matrix (linear part only)
 	 """
@@ -561,12 +499,11 @@ def J_r_linear(q):
     
     return J_linear
 
-
 def J_r_angular(q):
     """
 	 Compute the 3x6 angular part of the Jacobian matrix for UR5e.
 	 Param:
-		 q: List or array of joint angles [q1, q2, q3, q4, q5, q6]
+		 q: numpy array of joint angles [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector
 	 Return:
 		 3x6 Jacobian matrix (angular part only)
 	 """
@@ -582,7 +519,6 @@ def J_r_angular(q):
     
     return J_angular
 
-
 def J_r(q):
     """
 	 Construct the Jacobian matrix that maps velocity in cartesian space to joint velocity in UR5e joint space
@@ -591,7 +527,7 @@ def J_r(q):
 		 Singularity Analysis and Complete Methods to Compute the Inverse Kinematics for a 6-DOF UR/TM-Type Robot
 		 Jessice Villalobos
 	 Args:
-		 q: List or array of joint angles [q1, q2, q3, q4, q5, q6]
+		 q: numpy array of joint angles [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector
 	 Returns:
 		 Jacobian matrix J_r (6x6 matrix), including linear and angular velocity parts
 	 """
@@ -604,12 +540,12 @@ def J_r(q):
     d6 = 0.0825  # 0.0996
     a2 = 0.425
     a3 = 0.392
-    q1 = q[0];
-    q2 = q[1];
-    q3 = q[2];
-    q4 = q[3];
-    q5 = q[4];
-    q6 = q[5]
+    q1 = q[0,0]
+    q2 = q[1,0]
+    q3 = q[2,0]
+    q4 = q[3,0]
+    q5 = q[4,0]
+    q6 = q[5,0]
     c1 = math.cos(q1)
     c2 = math.cos(q2)
     c3 = math.cos(q3)
@@ -634,42 +570,42 @@ def J_r(q):
     pz = (r33 * d6) - (c234 * d5) + (s23 * a3) + (s2 * a2) + d1
     
     # Define the Jacobian Matrix
-    jacobian[0, 0] = -py;
-    jacobian[0, 1] = -c1 * (pz - d1);
-    jacobian[0, 2] = c1 * (s234 * s5 * d6 + (c234 * d5) - (s23 * a3));
-    jacobian[0, 3] = c1 * ((s234 * s5 * d6) + (c234 * d5));
-    jacobian[0, 4] = -d6 * ((s1 * s5) + (c1 * c234 * c5));
+    jacobian[0, 0] = -py
+    jacobian[0, 1] = -c1 * (pz - d1)
+    jacobian[0, 2] = c1 * (s234 * s5 * d6 + (c234 * d5) - (s23 * a3))
+    jacobian[0, 3] = c1 * ((s234 * s5 * d6) + (c234 * d5))
+    jacobian[0, 4] = -d6 * ((s1 * s5) + (c1 * c234 * c5))
     jacobian[0, 5] = 0
-    jacobian[1, 0] = px;
-    jacobian[1, 1] = -s1 * (pz - d1);
-    jacobian[1, 2] = s1 * ((s234 * s5 * d6) + (c234 * d5) - (s23 * a3));
-    jacobian[1, 3] = s1 * ((s234 * s5 * d6) + (c234 * d5));
-    jacobian[1, 4] = d6 * ((c1 * s5) - (c234 * c5 * s1));
+    jacobian[1, 0] = px
+    jacobian[1, 1] = -s1 * (pz - d1)
+    jacobian[1, 2] = s1 * ((s234 * s5 * d6) + (c234 * d5) - (s23 * a3))
+    jacobian[1, 3] = s1 * ((s234 * s5 * d6) + (c234 * d5))
+    jacobian[1, 4] = d6 * ((c1 * s5) - (c234 * c5 * s1))
     jacobian[1, 5] = 0
-    jacobian[2, 0] = 0;
-    jacobian[2, 1] = (s1 * py) + (c1 * px);
-    jacobian[2, 2] = -(c234 * s5 * d6) + (s234 * d5) + (c23 * a3);
-    jacobian[2, 3] = -(c234 * s5 * d6) + (s234 * d5);
-    jacobian[2, 4] = -c5 * s234 * d6;
+    jacobian[2, 0] = 0
+    jacobian[2, 1] = (s1 * py) + (c1 * px)
+    jacobian[2, 2] = -(c234 * s5 * d6) + (s234 * d5) + (c23 * a3)
+    jacobian[2, 3] = -(c234 * s5 * d6) + (s234 * d5)
+    jacobian[2, 4] = -c5 * s234 * d6
     jacobian[2, 5] = 0
     
-    jacobian[3, 0] = 0;
-    jacobian[3, 1] = s1;
-    jacobian[3, 2] = s1;
-    jacobian[3, 3] = s1;
-    jacobian[3, 4] = c1 * s234;
+    jacobian[3, 0] = 0
+    jacobian[3, 1] = s1
+    jacobian[3, 2] = s1
+    jacobian[3, 3] = s1
+    jacobian[3, 4] = c1 * s234
     jacobian[3, 5] = r13
-    jacobian[4, 0] = 0;
-    jacobian[4, 1] = -c1;
-    jacobian[4, 2] = -c1;
-    jacobian[4, 3] = -c1;
-    jacobian[4, 4] = s1 * s234;
+    jacobian[4, 0] = 0
+    jacobian[4, 1] = -c1
+    jacobian[4, 2] = -c1
+    jacobian[4, 3] = -c1
+    jacobian[4, 4] = s1 * s234
     jacobian[4, 5] = r23
-    jacobian[5, 0] = 1;
-    jacobian[5, 1] = 0;
-    jacobian[5, 2] = 0;
-    jacobian[5, 3] = 0;
-    jacobian[5, 4] = -c234;
+    jacobian[5, 0] = 1
+    jacobian[5, 1] = 0
+    jacobian[5, 2] = 0
+    jacobian[5, 3] = 0
+    jacobian[5, 4] = -c234
     jacobian[5, 5] = r33
     
     # Revise (still needs to be checked)
@@ -689,8 +625,7 @@ def J_r(q):
     # Return the Jacobian Matrix
     return jacobian
 
-
-def r2r_controller(reaching_box, desired_box, OBB=True):
+def r2r_controller(reaching_box, desired_box, q, OBB=True):
     """
 	 Construct the controller that consists of 4 steps: (1) Reaching, (2) Overlapping,
 	 (3)Scaling & Screwing, and finally, (4) Desired Overlapping.
@@ -707,6 +642,7 @@ def r2r_controller(reaching_box, desired_box, OBB=True):
     e_cy = 0.003
     k_cx = 0.0001
     k_cy = 0.0001
+    k = 1
     P_r = 0.002
     n = 2
     
@@ -726,10 +662,17 @@ def r2r_controller(reaching_box, desired_box, OBB=True):
     P_R = (k_cx / n) * (max(0, f_cx) ** n) + (k_cy / n) * (max(0, f_cy) ** n) + P_r
     
     # Differentiation of P_R
-    P_R_mat = np.array([(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0] - d_box[0]),
+    epsilon_R = np.array([(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0] - d_box[0]),
                (2 * k_cy / (n ** 2)) * ((max(0, f_cy)) ** (n - 1)) * (r_box[1] - d_box[1]), 0, 0, 0])
     
-    P_R_dot = (P_R_mat.T)
+    # Compute the Jacobian
+    vw_dot = J_r(q) @ q
+    p_dot = J_I(vw_dot) @ vw_dot
+    gamma_dot = J_o(p_dot) @ p_dot
     
-    return P_R, P_R_mat
+    # The Controller
+    # q_r_dot = -k*((J_r.T) @ J_I)
+    
+    
+    return epsilon_R, vw_dot, p_dot, gamma_dot
 
