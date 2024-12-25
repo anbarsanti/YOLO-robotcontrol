@@ -1,6 +1,6 @@
 """
 ﷽
-author: @anbarsanti
+by @anbarsanti
 """
 
 import numpy as np
@@ -22,17 +22,18 @@ def J_alpha(intersection_points):
         J_alpha
     """
     len_points = len(intersection_points)
-    J_alpha = []
+    jacobian = []
     for i in range(len_points):
         j = (i + 1) % len_points
         k = (i + len_points) % len_points
-        J_alpha.append(intersection_points[j][1] - intersection_points[k][1])
-        J_alpha.append(intersection_points[k][0] - intersection_points[j][0])
+        jacobian.append(intersection_points[j][1] - intersection_points[k][1])
+        jacobian.append(intersection_points[k][0] - intersection_points[j][0])
        
     # Compute the determinant to check singularity
-    determinant = np.linalg.det(J_alpha)
+    J_alpha = np.array(jacobian)
+    # determinant = np.linalg.det(J_alpha)
     
-    return np.array(J_alpha)
+    return J_alpha
 
 def J_I_8x3 (x1, y1, x2, y2, x3, y3, x4, y4, depth):
    """
@@ -130,18 +131,19 @@ def J_a(intersection_points, depth):
    """
    len_points = len(intersection_points)
    p = intersection_points
-   J_a = []
+   jacobian = []
    f_x = 618.072
    f_y = 618.201
    for i in range(len_points):
       j = [f_x/depth, 0, -p[i][0]/depth, -p[i][0]*p[i][1]/f_x, (f_x*f_x + p[i][0]*p[i][0])/f_x, -p[i][1]]
       k = [0, f_y/depth, -p[i][1]/depth, -(f_y*f_y + p[i][1]*p[i][1])/f_y, p[i][0]*p[i][1]/f_y, p[i][0]]
-      J_a.extend([[j],[k]])
+      jacobian.extend([[j],[k]])
    
    # Compute the determinant to check singularity
-   determinant = np.linalg.det(J_a)
+   J_a = np.array(jacobian)
+   # determinant = np.linalg.det(J_a)
    
-   return np.array(J_a)
+   return J_a
 
 def J_o(p):
    """
@@ -172,7 +174,7 @@ def J_o(p):
    jacobian [4,:] = [delta_y1/denom1, delta_x1/denom1, 0, 0, -delta_y1/denom1, -delta_x1/denom1]
    
    # Compute the determinant to check singularity
-   determinant = np.linalg.det(jacobian)
+   # determinant = np.linalg.det(jacobian)
    
    return jacobian
 

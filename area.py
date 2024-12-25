@@ -1,6 +1,6 @@
 """
 ﷽
-author: @anbarsanti
+by @anbarsanti
 """
 
 import numpy as np
