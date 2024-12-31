@@ -103,8 +103,7 @@ def track_from_webcam(model, OBB=True, print_to_csv=False):
                     xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
                     len_cls = len(cls)
                     for i in range(len_cls):
-                        xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[
-                            0]  # Flatten the xyxyxyxy
+                        xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
                         xyxyxyxyn_flatten_1 = \
                             (np.array((xyxyxyxyn[(i + 1) % len_cls].tolist())).reshape(1, 8).tolist())[
                                 0]  # Flatten the xyxyxyxy_1
@@ -145,7 +144,7 @@ def track_from_webcam(model, OBB=True, print_to_csv=False):
                                 writer.writerows([cxyxyn])
                 
                 # Display the annotated frame
-                cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame, "OBB = ", OBB)
+                cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
             
             # Break the loop if 'q' is pressed
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -204,7 +203,7 @@ def track_from_intelrealsense(model, OBB=True, print_to_csv=False):
         for r in results:
             annotated_frame = r.plot()
             
-            if OBB=True:
+            if OBB==True:
                 # Data Extraction from object tracking with OBB format
                 cls = r.obb.cls  # only applied in YOLO OBB model
                 xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model

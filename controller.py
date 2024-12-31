@@ -43,7 +43,10 @@ interp = intersection_points_OBB_diy(obbA, obbD)
 q = np.array([0.23, 0.91, 0.22, 0.12, 0.42, 0.74]).reshape((-1,1))
 q_dot = r2r_control(obbD, obbE, q, OBB=True)
 
-# Load a model
-# model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
-model = YOLO("model/yolo11-obb-11-16-watercan.pt") # watercan for OBB object tracking
+# # ------------------------------ Tracking Test ---------------------------------
+model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
+# model = YOLO("model/yolo11-obb-11-16-watercan.pt") # watercan for OBB object tracking
 # model = YOLO("model/yolo11n.pt") # object tracking with HBB
+
+track_from_webcam(model, OBB=False, print_to_csv=False)
+
