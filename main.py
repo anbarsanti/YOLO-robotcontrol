@@ -50,29 +50,33 @@ setp.input_double_register_4 = 0
 setp.input_double_register_5 = 0
 setp.input_bit_registers0_to_31 = 0
 
-
 # The function "rtde_set_watchdog" in the "rtde_control_loop.urp" creates a 1 Hz watchdog
 watchdog.input_double_register_0 = 0
 watchdog.input_int_register_0 = 0
 print("Successfully connected to the robot:", connection_state)
-print("Initialization of Robot Communication Stuff, Alhamdulillah done")
 
-# ===================================== START ROBOT DATA SYNCHRONIZATION =====================================
+# Start Pose
+start_pose = [0.38895, -0.62563, 0, 0, 0, 0]
+
+# Receiving Robot Data
 if not con.send_start():
     sys.exit()
     print("system exit")
 state = con.receive()
-tcp1 = state.actual_TCP_pose
-print("actual_TCP_pose:", tcp1)
-print("data synchronization done....")
+
+actual_q = state.actual_q
+actual_qd = state.actual_qd
+actual_tcp = state.actual_TCP_pose
+print("actual_q:", actual_q)
+print("actual_qd:", actual_qd)
+print("actual_tcp:", actual_tcp)
+print("Initialization of Robot Communication Stuff, Alhamdulillah done")
 
 ## ================================== INITIALIZATION OF TRACKING STUFF ==================================
 OBB = False
 model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
 # model = YOLO("model/yolo11-obb-11-16-watercan.pt") # watercan for OBB object tracking
 # model = YOLO("model/yolo11n.pt") # object tracking with HBB
-
-actual_q = []
 
 if OBB==True: # Initialization for OBB case
 	desired_box = [0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -98,29 +102,29 @@ for detected_box in track_from_webcam(model, OBB=OBB):
 	print("q_dot:", q_dot)
 
 # # ============================ MODE 1 = CONNECTION AND EXECUTE MOVEJ ============================
-# while True:
-# 	print('Please click CONTINUE on the Polyscope')  # Boolean 1 is False
-# 	state = con.receive()
-# 	con.send(watchdog)
-# 	if state.output_bit_registers0_to_31 == True:
-# 		print('Robot Program can proceed to mode 1\n')  # Boolean 1 is True
-# 		break
+# 	while True:
+# 		print('Please click CONTINUE on the Polyscope')  # Boolean 1 is False
+# 		state = con.receive()
+# 		con.send(watchdog)
+# 		if state.output_bit_registers0_to_31 == True:
+# 			print('Robot Program can proceed to mode 1\n')  # Boolean 1 is True
+# 			break
 #
-# print("---------------- Executing Initial Movement  --------------\n")
+# 	print("---------------- Executing Initial Movement  --------------\n")
 #
-# watchdog.input_int_register_0 = 1
-# con.send(watchdog)  # sending mode == 1
-# list_to_setp(setp, start_pose)  # changing initial pose to setp
-# con.send(setp)  # sending initial pose
+# 	watchdog.input_int_register_0 = 1
+# 	con.send(watchdog)  # sending mode == 1
+# 	list_to_setp(setp, start_pose)  # changing initial pose to setp
+# 	con.send(setp)  # sending initial pose
 #
-# while True:
-# 	# print('Waiting for movej() to finish')
-# 	state = con.receive()
-# 	con.send(watchdog)
-# 	if state.output_bit_registers0_to_31 == False:
-# 		print('Initial Movement (MoveJ) done, proceeding to Loop Movement\n')
-# 		break
-#
+# 	while True:
+# 		# print('Waiting for movej() to finish')
+# 		state = con.receive()
+# 		con.send(watchdog)
+# 		if state.output_bit_registers0_to_31 == False:
+# 			print('Initial Movement done, proceeding to Loop Movement\n')
+# 			break
+
 # # ============================ MODE 2 = EXECUTE SPEEDJ/SERVOJ ============================
 # print("------------------- Executing Loop Movement  -----------\n")
 # watchdog.input_int_register_0 = 2
