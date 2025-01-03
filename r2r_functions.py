@@ -17,14 +17,11 @@ import cv2
 import csv
 import supervision as sv
 
-from YOLOv11.controller import detected_box
-
-
 ## ===================================================================================
 ## ====================== TRACKING FUNCTION =========================
 ## ===================================================================================
 
-def track_from_video(VIDEO_PATH, model):
+def track_from_video(VIDEO_PATH, model, OBB = True):
     '''
     DETECT FROM VIDEO
     '''
@@ -53,8 +50,32 @@ def track_from_video(VIDEO_PATH, model):
         results = model.track(frame, stream=True, show=True, persist=True,
                               tracker='bytetrack.yaml')  # Tracking with byteTrack
         
-        # Draw the detections on the frame
-        annotated_frame = results[0].plot()
+        # Process, extract, and visualize the results
+        for r in results:
+            annotated_frame = r.plot()
+            
+            # Results Documentation:
+            # https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
+            
+            if OBB == True:
+                # Data Extraction from object tracking with OBB format
+                cls = r.obb.cls  # only applied in YOLO OBB model
+                xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
+                len_cls = len(cls)
+                for i in range(len_cls):
+                    xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[
+                        0]  # Flatten the xyxyxyxy
+                    detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
+                    yield detected_box
+            
+            else:  # HBB
+                # Data Extraction from object tracking with HBB format
+                cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
+                xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
+                len_cls = len(cls)
+                for i in range(len_cls):
+                    detected_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]  # Append class with its HBB
+                    yield detected_box
         
         # Write the frame to the output video
         out.write(annotated_frame)
@@ -68,8 +89,6 @@ def track_from_video(VIDEO_PATH, model):
     cap.release()
     out.release()
     cv2.destroyAllWindows()
-    
-    return annotated_frame
 
 
 def track_from_webcam(model, OBB=True):
@@ -78,6 +97,10 @@ def track_from_webcam(model, OBB=True):
     Return:
         detected_box in normalized cxyxyxyxy format (if OBB is true) or normalized cxyxyxy format (if OBB is false)
     '''
+    
+    # Initialize locked_box, the box that is locked
+    # in HBB toy detection, locked_box is the red box with class 1
+    
     # Open the camera
     cap = cv2.VideoCapture(0)  # Use 0 for the default camera, or change to a specific camera index if needed
     # 0 = web camera, 2 = depth camera
@@ -117,6 +140,9 @@ def track_from_webcam(model, OBB=True):
                     xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
                     len_cls = len(cls)
                     for i in range(len_cls):
+                        # if cls[i] == [1]:
+                        #     locked_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]
+                        #
                         detected_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]  # Append class with its HBB
                         yield detected_box
                 
@@ -132,8 +158,6 @@ def track_from_webcam(model, OBB=True):
     # Release resources
     cap.release()
     cv2.destroyAllWindows()
-    
-    return detected_box
 
 
 def track_from_intelrealsense(model, OBB=True):
@@ -184,7 +208,7 @@ def track_from_intelrealsense(model, OBB=True):
             
             if OBB==True:
                 # Data Extraction from object tracking with OBB format
-                cls = r.obb.cls  # only applied in YOLO OBB model
+                cls = r.obb.cls  # class labels for each OBB box, only applied in YOLO OBB model
                 xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
                 len_cls = len(cls)
                 for i in range(len_cls):
@@ -212,8 +236,6 @@ def track_from_intelrealsense(model, OBB=True):
     # Stop Streaming
     pipe.stop()
     cv2.destroyAllWindows()
-    
-    return detected_box
 
 
 ## ===================================================================================
@@ -894,22 +916,22 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     # Differentiation of P_R
     epsilon_R = np.array([(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0,0] - d_box[0,0]),
                (2 * k_cy / (n ** 2)) * ((max(0, f_cy)) ** (n - 1)) * (r_box[1,0] - d_box[1,0]), 0, 0, 0])
-    print("epsilon_R: ", epsilon_R)
+    # print("epsilon_R: ", epsilon_R)
     
     # Compute the full Jacobian matrix for current joint position values (actual_q) and position of reaching box
     J_reaching = (J_o(p_r_box)) @ (J_I(p_r_box)) @ (J_r(actual_q)) # Step 3
-    print("J_reaching: ", J_reaching)
+    # print("J_reaching: ", J_reaching)
     
     # Compute the pseudo inverse of the Jacobian matrix using the Moore-Penrose matrix inversion
     J_reaching_pinv = np.linalg.pinv(J_reaching) # Step 4
-    print("J_reaching_pinv: ", J_reaching_pinv)
+    # print("J_reaching_pinv: ", J_reaching_pinv)
     
     # Delta_Gamma or Gamma dot
     Gamma_dot = speed*(d_box - r_box) # Step 1 & 2
-    print("Gamma_dot: ", Gamma_dot)
+    # print("Gamma_dot: ", Gamma_dot)
     
     # The Controller
     q_dot = J_reaching_pinv @ Gamma_dot # Step 5. Using np.dot has similar value with using @
-    print("q_dot: ", q_dot)
+    # print("q_dot: ", q_dot)
     
     return q_dot
