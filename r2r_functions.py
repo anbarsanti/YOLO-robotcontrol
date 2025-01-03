@@ -17,6 +17,24 @@ import cv2
 import csv
 import supervision as sv
 
+## ===============================================================================================
+## ====================== ROBOT COMMUNICATION FUNCTIONS ===============================================
+## ===============================================================================================
+
+def setp_to_list(setp):
+    setp_list = []
+    for i in range(0, 6):
+        setp_list.append(setp.__dict__["input_double_register_%i" % i])
+    return setp_list
+
+
+def list_to_setp(setp, list):
+    for i in range(0, 6):
+        setp.__dict__["input_double_register_%i" % i] = list[i]
+    return setp
+
+
+
 ## ===================================================================================
 ## ====================== TRACKING FUNCTION =========================
 ## ===================================================================================
