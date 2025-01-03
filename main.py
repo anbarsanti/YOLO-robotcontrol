@@ -58,7 +58,7 @@ setp = con.send_input_setup(setp_names, setp_types)
 watchdog = con.send_input_setup(watchdog_names, watchdog_types)
 print("Setup recipes done")
 
-# ====================== START ROBOT DATA SYNCHRONIZATION ======================
+# ===================================== START ROBOT DATA SYNCHRONIZATION =====================================
 if not con.send_start():
     sys.exit()
     print("system exit")
@@ -96,5 +96,79 @@ for detected_box in track_from_webcam(model, OBB=OBB):
 	print("Area of intersection:", intersection_area_HBB(desired_box, reaching_box))
 	
 	q_dot = r2r_control(reaching_box, desired_box, actual_q, OBB=OBB)
-	
-	
+	print("q_dot:", q_dot)
+
+# # ============================ MODE 1 = CONNECTION AND EXECUTE MOVEJ ============================
+# while True:
+# 	print('Please click CONTINUE on the Polyscope')  # Boolean 1 is False
+# 	state = con.receive()
+# 	con.send(watchdog)
+# 	if state.output_bit_registers0_to_31 == True:
+# 		print('Robot Program can proceed to mode 1\n')  # Boolean 1 is True
+# 		break
+#
+# print("---------------- Executing Initial Movement  --------------\n")
+#
+# watchdog.input_int_register_0 = 1
+# con.send(watchdog)  # sending mode == 1
+# list_to_setp(setp, start_pose)  # changing initial pose to setp
+# con.send(setp)  # sending initial pose
+#
+# while True:
+# 	# print('Waiting for movej() to finish')
+# 	state = con.receive()
+# 	con.send(watchdog)
+# 	if state.output_bit_registers0_to_31 == False:
+# 		print('Initial Movement (MoveJ) done, proceeding to Loop Movement\n')
+# 		break
+#
+# # ============================ MODE 2 = EXECUTE SPEEDJ/SERVOJ ============================
+# print("------------------- Executing Loop Movement  -----------\n")
+# watchdog.input_int_register_0 = 2
+# con.send(watchdog)  # sending mode == 2
+#
+# # ============================ CONTROL LOOP INITIALIZATION ============================
+# trajectory_time = 8  # time of min_jerk trajectory
+# planner = PathPlanTranslation(start_pose, desired_pose, trajectory_time)
+# dt = 1 / 500  # 500 Hz    # frequency
+# plotter = True
+# state = con.receive()
+# tcp = state.actual_TCP_pose
+# t_current = 0
+# t_start = time.time()
+#
+#
+# # =================================== CONTROL LOOP  ===================================
+# while time.time() - t_start < trajectory_time:
+# 	t_init = time.time()
+# 	state = con.receive()
+# 	t_prev = t_current
+# 	t_current = time.time() - t_start
+#
+# 	if state.runtime_state > 1:  # read state from the robot
+# 		if t_current <= trajectory_time:
+# 			[position_ref, velocity_ref, acceleration_ref] = planner.trajectory_planning(t_current)
+#
+# 		# ------------------ Read State for Plotting Purpose -----------------------
+# 		current_p = state.actual_TCP_pose
+# 		current_q = state.actual_q
+# 		current_qd = state.actual_qd
+#
+# 		pose = velocity_ref.tolist() + [0, 0, 0]
+#
+# 		list_to_setp(setp, pose)
+# 		con.send(setp)
+#
+#
+# print('--------------------------------------------------------------------------------\n')
+# print(f"Alhamdulillah, it took {time.time() - t_start}s to execute the movement")
+# state = con.receive()
+# print('--------------------------------------------------------------------------------\n')
+# print("Last Position:", state.actual_TCP_pose)
+#
+# # =================================== MODE 3  ===================================
+# watchdog.input_int_register_0 = 3
+# con.send(watchdog)
+# con.send_pause()
+# con.disconnect()
+
