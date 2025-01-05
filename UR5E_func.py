@@ -2,8 +2,8 @@ import sys
 
 sys.path.append('../RTDE_Python_Client_Library')
 import logging
-from YOLOv11.rtde import rtde as rtde
-from YOLOv11 import rtde as rtde_config
+import rtde as rtde
+import rtde as rtde_config
 from matplotlib import pyplot as plt
 from YOLOv11.min_jerk_planner_translation import PathPlanTranslation
 import time
@@ -68,7 +68,6 @@ def UR5e_start(con, state, watchdog, setp):
 	
 	return con, state, watchdog, setp
 
-def UR5e_loop
 
 # Initialization Robot Communication Parameter
 # ROBOT_HOST = "10.149.230.168" # in robotics lab
@@ -77,7 +76,8 @@ ROBOT_PORT = 30004
 config_filename = "control_loop_configuration.xml"
 FREQUENCY = 500 # send data in 500 Hz instead of default 125Hz
 time_start = time.time()
-plotter = True
+plotter = False
+trajectory_time = 8
 if plotter:
 	time_plot = []
 	actual_q1 = []
@@ -101,26 +101,101 @@ start_pose = [0.4, -0.6, 0, 0, 0, 0]
 desired_pose = [-0.1827681851594755, -0.53539320093064, 0.2077025734923525, 0.6990025901302169, 0.30949715741835195,
 					 -0.10065200008528846]
 
-
-
-# Execute Speedj
+# Execute moving loop for the period of trajectory_time
 while True:
+	desired_pose = desired_pose*1.001
 	list_to_setp(setp, desired_pose)
 	con.send(setp)
+	# print("moving")
 	
-	# Plotting Purpose
-	state = con.receive()
-	actual_q = state.actual_q
-	actual_qd = state.actual_qd
-	actual_p = state.actual_TCP_pose
-	time_plot.append(time.time() - t_start)
-	actual_px.append(current_p[0])
-	actual_py.append(current_p[1])
-	actual_pz.append(current_p[2])
-	actual_q1.append(current_q[0])
-	actual_q2.append(current_q[1])
-	
+	# if plotter:
+	# 	# Plotting Purpose
+	# 	state = con.receive()
+	# 	actual_q = state.actual_q
+	# 	actual_qd = state.actual_qd
+	# 	actual_p = state.actual_TCP_pose
+	#
+	# 	time_plot.append(time.time() - time_start)
+	# 	actual_px.append(actual_p[0])
+	# 	actual_py.append(actual_p[1])
+	# 	actual_pz.append(actual_p[2])
+	# 	actual_q1.append(actual_q[0])
+	# 	actual_q2.append(actual_q[1])
+	# 	actual_q3.append(actual_q[2])
+	# 	actual_qd1.append(actual_qd[0])
+	# 	actual_qd2.append(actual_qd[1])
+	# 	actual_qd3.append(actual_qd[2])
+	# 	print("moving and recording data....")
 
 con.send(watchdog)
 con.send_pause()
 con.disconnect()
+
+# =================================== PLOTTING  ===================================
+if plotter:
+	# ----------- Tool Position -------------
+	plt.figure()
+	plt.plot(time_plot, actual_px, label="Actual Tool Position in x[m]")
+	plt.legend()
+	plt.grid()
+	plt.ylabel('Tool Position in x[m]')
+	plt.xlabel('Time [sec]')
+	
+	plt.figure()
+	plt.plot(time_plot, actual_py, label="Actual Tool Position in y[m]")
+	plt.legend()
+	plt.grid()
+	plt.ylabel('Tool Position in y[m]')
+	plt.xlabel('Time [sec]')
+	
+	plt.figure()
+	plt.plot(time_plot, actual_px, label="Actual Tool Position in z[m]")
+	plt.legend()
+	plt.grid()
+	plt.ylabel('Tool Position in z[m]')
+	plt.xlabel('Time [sec]')
+	
+	# ----------- Joint Position -------------
+	plt.figure()
+	plt.plot(time_plot, actual_q1, label="Actual Joint Position in 1st Joint")
+	plt.legend()
+	plt.grid()
+	plt.ylabel('Joint Position in x')
+	plt.xlabel('Time [sec]')
+	
+	plt.figure()
+	plt.plot(time_plot, actual_q2, label="Actual Joint Position in 2nd Joint")
+	plt.legend()
+	plt.grid()
+	plt.ylabel('Joint Position in y')
+	plt.xlabel('Time [sec]')
+	
+	plt.figure()
+	plt.plot(time_plot, actual_q3, label="Actual Joint Position in 3rd Joint")
+	plt.legend()
+	plt.grid()
+	plt.ylabel('Joint Position in z')
+	plt.xlabel('Time [sec]')
+	
+	# ----------- Desired Joint -------------
+	plt.figure()
+	plt.plot(time_plot, actual_qd1, label="Actual Joint Velocity in 1st Joint")
+	plt.legend()
+	plt.grid()
+	plt.ylabel('Joint Velocity in x')
+	plt.xlabel('Time [sec]')
+	
+	plt.figure()
+	plt.plot(time_plot, actual_qd2, label="Actual Joint Velocity in 2nd Joint")
+	plt.legend()
+	plt.grid()
+	plt.ylabel('Joint Velocity in y')
+	plt.xlabel('Time [sec]')
+	
+	plt.figure()
+	plt.plot(time_plot, actual_qd3, label="Actual Joint Velocity in 3rd Joint")
+	plt.legend()
+	plt.grid()
+	plt.ylabel('Joint Velocity in z')
+	plt.xlabel('Time [sec]')
+	plt.show()

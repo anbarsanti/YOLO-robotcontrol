@@ -16,9 +16,15 @@ import numpy as np
 import cv2
 import csv
 import supervision as sv
+import logging
+import rtde as rtde
+import rtde as rtde_config
+from matplotlib import pyplot as plt
+from min_jerk_planner_translation import PathPlanTranslation
+import time
 
 ## ===============================================================================================
-## ====================== ROBOT COMMUNICATION FUNCTIONS ===============================================
+## ====================== UR5e FUNCTIONS ===============================================
 ## ===============================================================================================
 
 def setp_to_list(setp):
@@ -32,6 +38,93 @@ def list_to_setp(setp, list):
     for i in range(0, 6):
         setp.__dict__["input_double_register_%i" % i] = list[i]
     return setp
+
+
+def UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename):
+    '''
+	 Robot communication initialization
+	 Args: ROBOT_HOST, ROBOT_PORT, config_filename
+	 Return: con, state, watchdog
+	 '''
+    logging.getLogger().setLevel(logging.INFO)
+    
+    conf = rtde_config.ConfigFile(config_filename)
+    state_names, state_types = conf.get_recipe("state")
+    setp_names, setp_types = conf.get_recipe("setp")
+    watchdog_names, watchdog_types = conf.get_recipe("watchdog")
+    
+    # Establish connection
+    con = rtde.RTDE(ROBOT_HOST, ROBOT_PORT)
+    connection_state = con.connect()
+    con.get_controller_version()  # Get controller version
+    
+    # Received the data from the robot
+    con.send_output_setup(state_names, state_types, FREQUENCY)
+    # Configure an input package that the external application will send to the robot controller
+    setp = con.send_input_setup(setp_names, setp_types)
+    watchdog = con.send_input_setup(watchdog_names, watchdog_types)
+    
+    # Start data synchronization
+    if not con.send_start():
+        sys.exit()
+        print("system exit")
+    state = con.receive()
+    
+    # Initialization Robot Parameters
+    setp.input_double_register_0 = 0
+    setp.input_double_register_1 = 0
+    setp.input_double_register_2 = 0
+    setp.input_double_register_3 = 0
+    setp.input_double_register_4 = 0
+    setp.input_double_register_5 = 0
+    setp.input_bit_registers0_to_31 = 0
+    
+    # The function "rtde_set_watchdog" in the "rtde_control_loop.urp" creates a 1 Hz watchdog
+    watchdog.input_double_register_0 = 0
+    watchdog.input_int_register_0 = 0
+    
+    print("Initialization of Robot Communication Stuff, Alhamdulillah done.")
+    
+    return con, state, watchdog, setp
+
+
+def UR5e_start(con, state, watchdog, setp):
+    # Execute MoveJ to the start joint position (check polyscope for the init joint)
+    while True:
+        print('Please click CONTINUE on the Polyscope')  # Boolean 1 is False
+        state = con.receive()
+        con.send(watchdog)
+        if state.output_bit_registers0_to_31 == True:
+            print('Robot Program can proceed to loop mode.\n')  # Boolean 1 is True
+            break
+    
+    return con, state, watchdog, setp
+
+
+# def UR5e_loop(con, state, watchdog, setp, desired_pose, plotter=False):
+#     while True:
+#         list_to_setp(setp, desired_pose)
+#         con.send(setp)
+#         print("moving")
+#         # if plotter:
+#         #     # Plotting Purpose
+#         #     state = con.receive()
+#         #     actual_q = state.actual_q
+#         #     actual_qd = state.actual_qd
+#         #     actual_p = state.actual_TCP_pose
+#         #
+#         #     time_plot.append(time.time() - time_start)
+#         #     actual_px.append(actual_p[0])
+#         #     actual_py.append(actual_p[1])
+#         #     actual_pz.append(actual_p[2])
+#         #     actual_q1.append(actual_q[0])
+#         #     actual_q2.append(actual_q[1])
+#         #     actual_q3.append(actual_q[2])
+#         #     actual_qd1.append(actual_qd[0])
+#         #     actual_qd2.append(actual_qd[1])
+#         #     actual_qd3.append(actual_qd[2])
+#         #     print("moving and recording data....")
+#     return con, state, watchdog, setp
 
 ## ===================================================================================
 ## ====================== TRACKING FUNCTION =========================
