@@ -7,34 +7,51 @@ import numpy as np
 import math
 import torch
 from r2r_functions import *
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 
 ## ==============================================================================================================
 ## ==================================== TESTING PURPOSES =================================================
 ## ==============================================================================================================
 
-# ------------------------------ HBB ---------------------------------
+# # ------------------------------ HBB ---------------------------------
 # print("----------------------HBB Test--------------------------")
 # hbbA = np.array([1, 0.7, 0.3, 0.4, 0.4])
-# hbbC = np.array([1, 0.8, 0.8, 0.2, 0.2])
-# hbbD = np.array([1, 0.7, 0.55, 0.2, 0.3])
-# print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbA))
-# print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbC))
-# print("HBB vertices of hbbA", convert_HBB_to_vertices(hbbD))
-# print(intersection_area_HBB(hbbA, hbbC))
-# print(intersection_area_HBB(hbbA, hbbD))
-# print(intersection_area_HBB(hbbC, hbbD))
+# hbbB = np.array([1, 0.8, 0.2, 0.2, 0.2])
+# hbbC = np.array([1, 0.35, 0.6, 0.5, 0.4])
+# print("Area A vs B", intersection_area_HBB(hbbA, hbbB))
+# print("Area A vs D", intersection_area_HBB(hbbA, hbbC))
+# print("Area B vs D", intersection_area_HBB(hbbB, hbbC))
 # print("image feature points of hbbA:", cxywh2xyxyxy(hbbA))
 
-# # ------------------------------ OBB ---------------------------------
+# # # ------------------------------ OBB ---------------------------------
 # print("----------------------OBB Test--------------------------")
 # obbA = np.array([0, 0.1, 0.2, 0.9, 0.2, 0.9, 0.8, 0.1, 0.8])
 # obbB = np.array([0, 0.5, 0.9, 0.9, 0.9, 0.9, 1.0, 0.5, 1.0])
 # obbC = np.array([0, 0.2, 0.1, 0.4, 0.1, 0.4, 0.9, 0.2, 0.9])
 # obbD = np.array([0, 0.6, 0.1, 0.9, 0.4, 0.7, 0.8, 0.4, 0.5])
 # obbE = np.array([0, 0.2, 0.1, 0.4, 0.3, 0.3, 0.4, 0.1, 0.2])
-# print("DIY Area of boxA and boxD", intersection_area_OBB_diy(obbA, obbD))
-# # print("Shapely Area of boxA and boxD", intersection_area_OBB_shapely(obbA, obbD))
-# interp = intersection_points_OBB_diy(obbA, obbD)
+# print("Area of A and C", intersection_area_OBB_diy(obbA, obbC))
+# print("Area of A and C shapely", intersection_area_OBB_shapely(obbA, obbC))
+# print("Area of A and D", intersection_area_OBB_diy(obbA, obbD))
+# print("Area of A and D shapely", intersection_area_OBB_shapely(obbA, obbD))
+# print("Area of A and E", intersection_area_OBB_diy(obbA, obbE))
+# print("Area of A and E shapely", intersection_area_OBB_shapely(obbA, obbE))
+# print("Area of C and D", intersection_area_OBB_diy(obbC, obbD))
+# print("Area of C and D shapely", intersection_area_OBB_shapely(obbC, obbD))
+# print("Area of C and E", intersection_area_OBB_diy(obbC, obbE))
+# print("Area of C and E shapely", intersection_area_OBB_shapely(obbC, obbE))
+# p1 = intersection_points_OBB_diy(obbA, obbC)
+# print("interp A and C:", p1)
+# p2 = intersection_points_OBB_diy(obbA, obbD)
+# print("interp A and D:", p2)
+# p3 = intersection_points_OBB_diy(obbA, obbE)
+# print("interp A and E:", p3)
+# p4 = intersection_points_OBB_diy(obbC, obbD)
+# print("interp C and D:", p4)
+# p5 = intersection_points_OBB_diy(obbC, obbE)
+# print("interp C and E:", p5)
+
 #
 #
 # # # ------------------------------ Jacobian Test ---------------------------------

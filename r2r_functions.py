@@ -23,9 +23,7 @@ from matplotlib import pyplot as plt
 from min_jerk_planner_translation import PathPlanTranslation
 import time
 
-## ===============================================================================================
 ## ====================== UR5e FUNCTIONS ===============================================
-## ===============================================================================================
 
 def setp_to_list(setp):
     setp_list = []
@@ -89,7 +87,11 @@ def UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename):
 
 
 def UR5e_start(con, state, watchdog, setp):
-    # Execute MoveJ to the start joint position (check polyscope for the init joint)
+    '''
+    Execute MoveJ to the start joint position (check polyscope for the init joint)
+    Args: con, state, watchdog, setp
+    Return: con, state, watchdog, setp
+    '''
     while True:
         print('Please click CONTINUE on the Polyscope')  # Boolean 1 is False
         state = con.receive()
@@ -101,34 +103,102 @@ def UR5e_start(con, state, watchdog, setp):
     return con, state, watchdog, setp
 
 
-# def UR5e_loop(con, state, watchdog, setp, desired_pose, plotter=False):
-#     while True:
-#         list_to_setp(setp, desired_pose)
-#         con.send(setp)
-#         print("moving")
-#         # if plotter:
-#         #     # Plotting Purpose
-#         #     state = con.receive()
-#         #     actual_q = state.actual_q
-#         #     actual_qd = state.actual_qd
-#         #     actual_p = state.actual_TCP_pose
-#         #
-#         #     time_plot.append(time.time() - time_start)
-#         #     actual_px.append(actual_p[0])
-#         #     actual_py.append(actual_p[1])
-#         #     actual_pz.append(actual_p[2])
-#         #     actual_q1.append(actual_q[0])
-#         #     actual_q2.append(actual_q[1])
-#         #     actual_q3.append(actual_q[2])
-#         #     actual_qd1.append(actual_qd[0])
-#         #     actual_qd2.append(actual_qd[1])
-#         #     actual_qd3.append(actual_qd[2])
-#         #     print("moving and recording data....")
-#     return con, state, watchdog, setp
+def UR5e_loop(con, state, watchdog, setp, desired_value, time_start, trajectory_time, time_plot,
+              actual_p, actual_q, actual_qd):
+    '''
+    Execute moving loop for the period of trajectory_time, and record the trajectory data (actual_p, actual_q, actual_qd)
+    Args: con, state, watchdog, setp, desired_value, time_start, trajectory_time, time_plot,
+        actual_p, actual_q, actual_qd
+    Return: con, state, watchdog, setp
+    '''
+    
+    while time.time() - time_start < trajectory_time:
+        list_to_setp(setp, desired_value)
+        con.send(setp)
+        
+        state = con.receive()
+        new_actual_q = np.array(state.actual_q)
+        new_actual_qd = np.array(state.actual_qd)
+        new_actual_p = np.array(state.actual_TCP_pose)
+        
+        # Plotting Purpose
+        time_plot.append(time.time() - time_start)
+        actual_p = np.vstack((actual_p, new_actual_p))
+        actual_q = np.vstack((actual_q, new_actual_q))
+        actual_qd = np.vstack((actual_qd, new_actual_qd))
+    
+    return con, state, watchdog, setp, actual_p, actual_q, actual_qd
 
-## ===================================================================================
+def final_plotting (time_plot, actual_p, actual_q, actual_qd):
+    plt.figure()
+    plt.plot(time_plot, actual_p[:, 0], label="Actual Tool Position in x[m]")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Tool Position in x[m]')
+    plt.xlabel('Time [sec]')
+    
+    plt.figure()
+    plt.plot(time_plot, actual_p[:, 1], label="Actual Tool Position in y[m]")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Tool Position in y[m]')
+    plt.xlabel('Time [sec]')
+    
+    plt.figure()
+    plt.plot(time_plot, actual_p[:, 2], label="Actual Tool Position in z[m]")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Tool Position in z[m]')
+    plt.xlabel('Time [sec]')
+    
+    # ----------- Joint Position -------------
+    plt.figure()
+    plt.plot(time_plot, actual_q[:, 0], label="Actual Joint Position in 1st Joint")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Joint Position in x')
+    plt.xlabel('Time [sec]')
+    
+    plt.figure()
+    plt.plot(time_plot, actual_q[:, 1], label="Actual Joint Position in 2nd Joint")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Joint Position in y')
+    plt.xlabel('Time [sec]')
+    
+    plt.figure()
+    plt.plot(time_plot, actual_q[:, 2], label="Actual Joint Position in 3rd Joint")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Joint Position in z')
+    plt.xlabel('Time [sec]')
+    
+    # ----------- Desired Joint -------------
+    plt.figure()
+    plt.plot(time_plot, actual_qd[:, 0], label="Desired Joint Velocity in 1st Joint")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Joint Velocity in x')
+    plt.xlabel('Time [sec]')
+    
+    plt.figure()
+    plt.plot(time_plot, actual_qd[:, 1], label="Desired Joint Velocity in 2nd Joint")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Joint Velocity in y')
+    plt.xlabel('Time [sec]')
+    
+    plt.figure()
+    plt.plot(time_plot, actual_qd[:, 2], label="Desired Joint Velocity in 3rd Joint")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Joint Velocity in z')
+    plt.xlabel('Time [sec]')
+    plt.show()
+
+    return plt
+
 ## ====================== TRACKING FUNCTION =========================
-## ===================================================================================
 
 def track_from_video(VIDEO_PATH, model, OBB = True):
     '''
@@ -347,7 +417,6 @@ def track_from_intelrealsense(model, OBB=True):
     cv2.destroyAllWindows()
 
 
-## ===================================================================================
 ## ============================= YOLO HBB AND OBB FORMAT ================================
 
 # YOLO OBB format is class_index x1 y1 x2 y2 x3 y3 x4 y4
@@ -360,13 +429,9 @@ def track_from_intelrealsense(model, OBB=True):
 
 # YOLO HBB format is class_index x_center y_center width height
 
-
-## ===================================================================================
 ## ====================== ARE BOX A AND BOX B INTERSECTING? =========================
 ## ====================== SEPARATION AXIS THEOREM ====================================
-## ===================================================================================
-# Useful sources:
-# https://programmerart.weebly.com/separating-axis-theorem.html
+# Useful sources: https://programmerart.weebly.com/separating-axis-theorem.html
 
 def convert_HBB_to_vertices(hbb):
     """
@@ -433,19 +498,8 @@ def is_OBB_intersect(obbA, obbB):
             return False # box A and box B not overlapping, separating axis found
     return True # box A and box B is overlapping, no separating axis found
 
-## ==============================================================================================================
-## ====================== FIND INTERSECTION AREA IF TWO OBBS ARE OVERLAPPING ====================================
-## ==============================================================================================================
+## =============== FIND INTERSECTION AREA IF TWO OBBS ARE OVERLAPPING ====================================
 ## Other references using OpenCV: https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga3d476a3417130ae5154aea421ca7ead9
-
-def intersection_area_OBB_shapely(obbA, obbB):
-    # Compute the intersection area using shapely library
-    if is_OBB_intersect(obbA, obbB):
-        polyA = Polygon(convert_OBB_to_vertices(obbA))
-        polyB = Polygon(convert_OBB_to_vertices(obbB))
-        return polyA.intersection(polyB).area
-    else:
-        return None
 
 def cxyxyxyxy2xywhr(OBB):
     """
@@ -543,14 +597,14 @@ def line_intersection(line1, line2):
 
     return [x, y]
 
-def sort_points_clockwise(points):
+def sort_points_clockwise(p):
     """
     Sorting some points in convex polygon in clockwise order
     Args: list of array of points with format [[x, y],[x, y],[x, y],[x, y],...,[x, y]]
     Return: sorted list of array with format [[x, y],[x, y],[x, y],...,[x, y]] in clockwise order
     """
     # Convert to numpy array
-    points = np.array(points)
+    points = np.array(p)
     
     # Calculate centroid
     centroid = np.mean(points, axis=0)
@@ -607,7 +661,7 @@ def intersection_points_OBB_diy(boxA, boxB):
 
 def intersection_area_OBB_diy(boxA, boxB):
     """
-    Compute the Area using Triangle Formula byMauren Abreu de Souza
+    Compute the Area using Triangle Formula by Mauren Abreu de Souza
     Args: two OBBs with format  [class, x1, y1, x2, y2, x3, y3, x4, y4] with shape (1,9)
     Returns: intersection area with shape (1,1)
     """
@@ -622,6 +676,15 @@ def intersection_area_OBB_diy(boxA, boxB):
     area = abs(area) / 2.0
 
     return area
+
+def intersection_area_OBB_shapely(obbA, obbB):
+    # Compute the intersection area using shapely library
+    if is_OBB_intersect(obbA, obbB):
+        polyA = Polygon(convert_OBB_to_vertices(obbA))
+        polyB = Polygon(convert_OBB_to_vertices(obbB))
+        return polyA.intersection(polyB).area
+    else:
+        return None
 
 def intersection_area_HBB(boxA, boxB):
     """
@@ -652,10 +715,7 @@ def intersection_area_HBB(boxA, boxB):
 
     return area
 
-
-## ==============================================================================================================
-## ============================================ DEFINE THE JACOBIAN MATRICES ====================================
-## ==============================================================================================================
+## ============================== DEFINE THE JACOBIAN MATRICES ====================================
 
 def J_alpha(intersection_points):
     """
