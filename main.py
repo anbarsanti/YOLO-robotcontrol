@@ -53,7 +53,7 @@ import time
 ROBOT_HOST = "192.168.18.14"  # virtual machine in from linux host
 ROBOT_PORT = 30004
 config_filename = "control_loop_configuration.xml"
-FREQUENCY = 500  # send data in 500 Hz instead of default 125Hz
+FREQUENCY = 250  # send data in 500 Hz instead of default 125Hz
 time_start = time.time()
 plotter = False
 t = 8
