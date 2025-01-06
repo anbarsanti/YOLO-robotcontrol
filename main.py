@@ -35,8 +35,8 @@ for detected_box in track_from_webcam(model, OBB=OBB):
 	print("desired_box", desired_box)
 	print("Area of intersection:", intersection_area_HBB(desired_box, reaching_box))
 
-	q_dot = r2r_control(reaching_box, desired_box, actual_q, OBB=OBB)
-	print("q_dot:", q_dot)
+	# # q_dot = r2r_control(reaching_box, desired_box, actual_q, OBB=OBB)
+	# print("q_dot:", q_dot)
 
 
 

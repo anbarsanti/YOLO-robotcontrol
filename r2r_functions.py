@@ -686,22 +686,31 @@ def intersection_area_OBB_shapely(obbA, obbB):
     else:
         return None
 
+def is_HBB_intersect(boxA, boxB):
+    '''
+    Check if two Horizontal Bounding Boxes (HBB) are intersecting
+    Args: two HBBs with format  [class, cx, cy, w, h] with shape (1,5)
+    Return: True if two boxes are overlapping, False otherwise
+    '''
+    verticesA = convert_HBB_to_vertices(boxA)
+    verticesB = convert_HBB_to_vertices(boxB)
+    return (verticesA[0][0] < verticesB[1][0] and
+            verticesA[1][0] > verticesB[0][0] and # boxA.minX <= boxB.maxX and boxA.maxX >= boxB.minX
+            verticesA[0][1] < verticesB[1][1] and
+            verticesA[1][1] > verticesB[0][1]) # (boxA.minY <= boxB.maxY) and (boxA.maxY >= boxB.minY)
+
 def intersection_area_HBB(boxA, boxB):
     """
     Compute the Intersection Area of two Horizontal Bounding Boxes (HBB)
     Args: two HBBs with format  [class, x1, y1, x2, y2, x3, y3, x4, y4] with shape (1,9)
     Returns: intersection area with shape (1,1)
     """
-    verticesA = convert_HBB_to_vertices(boxA)
-    verticesB = convert_HBB_to_vertices(boxB)
-
-    def is_HBB_intersect(verticesA, verticesB):
-        return (verticesA[0][0] < verticesB[1][0] and
-                verticesA[1][0] > verticesB[0][0] and # boxA.minX <= boxB.maxX and boxA.maxX >= boxB.minX
-                verticesA[0][1] < verticesB[1][1] and
-                verticesA[1][1] > verticesB[0][1]) # (boxA.minY <= boxB.maxY) and (boxA.maxY >= boxB.minY)
-
-    if is_HBB_intersect(verticesA, verticesB):
+    if is_HBB_intersect(boxA, boxB):
+        
+        # Define the vertices
+        verticesA = convert_HBB_to_vertices(boxA)
+        verticesB = convert_HBB_to_vertices(boxB)
+        
         # Calculate the coordinates of intersection rectangle
         x_left = max(verticesA[0][0], verticesB[0][0])
         y_top = max(verticesA[0][1], verticesB[0][1])
