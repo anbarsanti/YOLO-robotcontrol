@@ -22,15 +22,14 @@ hbbC_xywh = np.array([1, 0.35, 0.6, 0.5, 0.4]) #xywh format
 hbbD_xyxy = np.array([0, 0.2, 0.2, 0.8, 0.8])
 hbbE_xyxy = np.array([0, 0.3, 0.1, 0.5, 0.9])
 hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
-# print("convert hbbD", cxyxy2xyxyxy(hbbD_xyxy))
-# print("convert hbbE", cxyxy2xyxyxy(hbbE_xyxy))
-# print("convert hbbF", cxyxy2xyxyxy(hbbF_xyxy))
-# print("convert hbbA_xywh", cxywh2xyxyxy(hbbA_xywh))
-# print("convert hbbB_xywh", cxywh2xyxyxy(hbbB_xywh))
-# print("convert hbbC_xywh", cxywh2xyxyxy(hbbC_xywh))
-print("is intersect HBB A and B", is_HBB_xywh_intersect(hbbA_xywh, hbbB_xywh))
-print("is intersect HBB A and C", is_HBB_xywh_intersect(hbbA_xywh, hbbC_xywh))
-print("is intersect HBB B and C", is_HBB_xywh_intersect(hbbB_xywh, hbbC_xywh))
+
+print("area HBB A and B", intersection_area_HBB_xywh(hbbA_xywh, hbbB_xywh))
+print("area HBB A and C", intersection_area_HBB_xywh(hbbA_xywh, hbbC_xywh))
+print("area HBB B and C", intersection_area_HBB_xywh(hbbB_xywh, hbbC_xywh))
+
+print("area HBB D and E", intersection_area_HBB_xyxy(hbbD_xyxy, hbbE_xyxy))
+print("area HBB D and F", intersection_area_HBB_xyxy(hbbD_xyxy, hbbF_xyxy))
+print("area HBB E and F", intersection_area_HBB_xyxy(hbbE_xyxy, hbbF_xyxy))
 
 
 

@@ -705,7 +705,7 @@ def intersection_area_OBB_shapely(obbA, obbB):
 def is_HBB_xywh_intersect(boxA, boxB):
     '''
     Check if two Horizontal Bounding Boxes (HBB) are intersecting
-    Args: two HBBs with format  [class, x1, y1, x2, y2] with shape (1,5)
+    Args: two HBBs with format  [class, x, y, w, h] with shape (1,5)
     Return: True if two boxes are overlapping, False otherwise
     '''
     verticesA = convert_HBB_xywh_to_vertices(boxA)
@@ -716,21 +716,27 @@ def is_HBB_xywh_intersect(boxA, boxB):
             verticesA[1][1] > verticesB[0][1]) # (boxA.minY <= boxB.maxY) and (boxA.maxY >= boxB.minY)
 
 def is_HBB_xyxy_intersect(boxA, boxB):
+    '''
+    Check if two Horizontal Bounding Boxes (HBB) are intersecting
+    Args: two HBBs with format  [class, x1, y1, x2, y2] with shape (1,5)
+    Return: True if two boxes are overlapping, False otherwise
+    '''
+    return (boxA[1] < boxB[3] and # boxA.minX <= boxB.maxX a
+            boxA[3] > boxB[1] and # boxA.maxX >= boxB.minX
+            boxA[2] < boxB[4] and # (boxA.minY <= boxB.maxY)
+            boxA[4] > boxB[2]) # and (boxA.maxY >= boxB.minY)
 
-
-def intersection_area_HBB(boxA, boxB):
+def intersection_area_HBB_xywh(boxA, boxB):
     """
     Compute the Intersection Area of two Horizontal Bounding Boxes (HBB)
-    Args: two HBBs with format  [class, x1, y1, x2, y2] with shape (1,5)
-        (x1, y1): The top-left corner of the box
-        (x2, y2): The bottom-right corner of the box
+    Args: two HBBs with format  [class, x, y, w, h] with shape (1,5)
     Returns: intersection area with shape (1,1)
     """
-    if is_HBB_intersect(boxA, boxB):
+    if is_HBB_xywh_intersect(boxA, boxB):
         
         # Define the vertices
-        verticesA = convert_HBB_to_vertices(boxA)
-        verticesB = convert_HBB_to_vertices(boxB)
+        verticesA = convert_HBB_xywh_to_vertices(boxA)
+        verticesB = convert_HBB_xywh_to_vertices(boxB)
         
         # Calculate the coordinates of intersection rectangle
         x_left = max(verticesA[0][0], verticesB[0][0])
@@ -743,6 +749,28 @@ def intersection_area_HBB(boxA, boxB):
     else:
         area = 0
 
+    return area
+
+def intersection_area_HBB_xyxy(boxA, boxB):
+    """
+    Compute the Intersection Area of two Horizontal Bounding Boxes (HBB)
+    Args: two HBBs with format  [class, x1, y1, x2, y2] with shape (1,5)
+        (x1, y1): The top-left corner of the box
+        (x2, y2): The bottom-right corner of the box
+    Returns: intersection area with shape (1,1)
+    """
+    if is_HBB_xyxy_intersect(boxA, boxB):
+        # Calculate the coordinates of intersection rectangle
+        x_left = max(boxA[1], boxB[1])
+        y_top = max(boxA[2], boxB[2])
+        x_right = min(boxA[3], boxB[3])
+        y_bottom = min(boxA[4], boxB[4])
+        
+        area = (x_right - x_left) * (y_bottom - y_top)
+    
+    else:
+        area = 0
+    
     return area
 
 ## ============================== DEFINE THE JACOBIAN MATRICES ====================================
