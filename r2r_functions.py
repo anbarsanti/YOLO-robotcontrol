@@ -103,7 +103,7 @@ def UR5e_start(con, state, watchdog, setp):
     return con, state, watchdog, setp
 
 
-def UR5e_loop(con, state, watchdog, setp, desired_value, time_start, trajectory_time, time_plot,
+def UR5e_move(con, state, watchdog, setp, desired_value, time_plot,
               actual_p, actual_q, actual_qd):
     '''
     Execute moving loop for the period of trajectory_time, and record the trajectory data (actual_p, actual_q, actual_qd)
@@ -111,23 +111,21 @@ def UR5e_loop(con, state, watchdog, setp, desired_value, time_start, trajectory_
         actual_p, actual_q, actual_qd
     Return: con, state, watchdog, setp
     '''
-    
-    while time.time() - time_start < trajectory_time:
-        list_to_setp(setp, desired_value)
-        con.send(setp)
+    list_to_setp(setp, desired_value)
+    con.send(setp)
         
-        state = con.receive()
-        new_actual_q = np.array(state.actual_q)
-        new_actual_qd = np.array(state.actual_qd)
-        new_actual_p = np.array(state.actual_TCP_pose)
-        
-        # Plotting Purpose
-        time_plot.append(time.time() - time_start)
-        actual_p = np.vstack((actual_p, new_actual_p))
-        actual_q = np.vstack((actual_q, new_actual_q))
-        actual_qd = np.vstack((actual_qd, new_actual_qd))
+    state = con.receive()
+    new_actual_q = np.array(state.actual_q)
+    new_actual_qd = np.array(state.actual_qd)
+    new_actual_p = np.array(state.actual_TCP_pose)
     
-    return con, state, watchdog, setp, actual_p, actual_q, actual_qd
+    # Plotting Purpose
+    time_plot.append(time.time() - time_start)
+    actual_p = np.vstack((actual_p, new_actual_p))
+    actual_q = np.vstack((actual_q, new_actual_q))
+    actual_qd = np.vstack((actual_qd, new_actual_qd))
+    
+    return con, state, watchdog, setp, time_plot, actual_p, actual_q, actual_qd
 
 def final_plotting (time_plot, actual_p, actual_q, actual_qd):
     plt.figure()
@@ -207,7 +205,6 @@ def track_from_video(VIDEO_PATH, model, OBB = True):
     # Create a VideoCapture and ImageCapture object
     cap = cv2.VideoCapture(VIDEO_PATH)
     image = cv2.imread(IMAGE_PATH)
-    aq
     
     # Get video properties
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -319,9 +316,7 @@ def track_from_webcam(model, OBB=True):
                     xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
                     len_cls = len(cls)
                     for i in range(len_cls):
-                        # if cls[i] == [1]:
-                        #     locked_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]
-                        #
+
                         detected_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]  # Append class with its HBB
                         yield detected_box
                 
@@ -773,7 +768,7 @@ def intersection_area_HBB_xyxy(boxA, boxB):
     
     return area
 
-## ============================== DEFINE THE JACOBIAN MATRICES ====================================
+## ============================== JACOBIAN MATRICES ====================================
 
 def J_alpha(intersection_points):
     """
