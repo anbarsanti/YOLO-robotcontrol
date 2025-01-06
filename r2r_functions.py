@@ -416,9 +416,7 @@ def track_from_intelrealsense(model, OBB=True):
     pipe.stop()
     cv2.destroyAllWindows()
 
-
 ## ============================= YOLO HBB AND OBB FORMAT ================================
-
 # YOLO OBB format is class_index x1 y1 x2 y2 x3 y3 x4 y4
 # x1, y1: Coordinates of the first corner point
 # x2, y2: Coordinates of the second corner point
@@ -426,14 +424,12 @@ def track_from_intelrealsense(model, OBB=True):
 #  x4, y4: Coordinates of the fourth corner point
 # All coordination are normalized to values between 0 and 1 relative to image dimensions (allows the annotation to be resolution dependent)
 # YOLO v11 OBB format is already in polygon format
+# YOLO HBB format is either [class_index x_center y_center width height] or [class x1 y1 x2 y2]
 
-# YOLO HBB format is class_index x_center y_center width height
+## =============== FIND INTERSECTION AREA IF TWO OBBS/HBBs ARE OVERLAPPING ====================================
+## Other references using OpenCV: https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga3d476a3417130ae5154aea421ca7ead9
 
-## ====================== ARE BOX A AND BOX B INTERSECTING? =========================
-## ====================== SEPARATION AXIS THEOREM ====================================
-# Useful sources: https://programmerart.weebly.com/separating-axis-theorem.html
-
-def convert_HBB_to_vertices(hbb):
+def convert_HBB_xywh_to_vertices(hbb):
     """
     Convert Horizontal Bounding Boxes (HBB) from [class_id, x_center, y_center, width, height] to [[x1,y1],[x2,y2]]
     Where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
@@ -476,6 +472,7 @@ def edges_of(vertices):
 def is_OBB_intersect(obbA, obbB):
     """
     Determining if two OBBs are intersecting using Separating Axis Theorem
+    Useful sources: https://programmerart.weebly.com/separating-axis-theorem.html
     Args: two boxes with format  [label, x1, y1, x2, y2, x3, y3, x4, y4]
     Returns: True if two boxes are overlapping
     """
@@ -497,9 +494,6 @@ def is_OBB_intersect(obbA, obbB):
         if not (projectionA[0] < projectionB[1]) and (projectionB[0] < projectionA[1]):
             return False # box A and box B not overlapping, separating axis found
     return True # box A and box B is overlapping, no separating axis found
-
-## =============== FIND INTERSECTION AREA IF TWO OBBS ARE OVERLAPPING ====================================
-## Other references using OpenCV: https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga3d476a3417130ae5154aea421ca7ead9
 
 def cxyxyxyxy2xywhr(OBB):
     """
@@ -566,6 +560,28 @@ def cxywh2xyxyxy(HBB):
     y3 = HBB[2]
     
     return np.array([x1, y1, x2, y2, x3, y3]).reshape(-1,1)
+
+def cxyxy2xyxyxy(HBB): # Checked
+    """
+    Converts bounding box with format [class x1 y1 x2 y2] to [x1 y1 x2 y2 x3 y3] as image feature vector
+    Args:
+        horizontal bounding box with format [class x1 y1 x2 y2]
+        (x1, y1): The top-left corner of the box
+        (x2, y2): The bottom-right corner of the box
+    Return:
+        image feature vector with [x1 y1 x2 y2 x3 y3]
+        x1 y1 and x2 y2 represent the midpoint on the adjacent two sides of the rotating bounding box
+        x3 y3 denotes the center of horizontal bounding box
+    """
+    # Calculate
+    x1 = HBB[1]
+    y1 = (HBB[2] + HBB[4])/2
+    x2 = (HBB[1] + HBB[3])/2
+    y2 = HBB[2]
+    x3 = x2
+    y3 = y1
+    
+    return np.array([x1, y1, x2, y2, x3, y3]).reshape(-1, 1) # Ch
     
 def line_intersection(line1, line2):
     """
@@ -686,23 +702,28 @@ def intersection_area_OBB_shapely(obbA, obbB):
     else:
         return None
 
-def is_HBB_intersect(boxA, boxB):
+def is_HBB_xywh_intersect(boxA, boxB):
     '''
     Check if two Horizontal Bounding Boxes (HBB) are intersecting
-    Args: two HBBs with format  [class, cx, cy, w, h] with shape (1,5)
+    Args: two HBBs with format  [class, x1, y1, x2, y2] with shape (1,5)
     Return: True if two boxes are overlapping, False otherwise
     '''
-    verticesA = convert_HBB_to_vertices(boxA)
-    verticesB = convert_HBB_to_vertices(boxB)
+    verticesA = convert_HBB_xywh_to_vertices(boxA)
+    verticesB = convert_HBB_xywh_to_vertices(boxB)
     return (verticesA[0][0] < verticesB[1][0] and
             verticesA[1][0] > verticesB[0][0] and # boxA.minX <= boxB.maxX and boxA.maxX >= boxB.minX
             verticesA[0][1] < verticesB[1][1] and
             verticesA[1][1] > verticesB[0][1]) # (boxA.minY <= boxB.maxY) and (boxA.maxY >= boxB.minY)
 
+def is_HBB_xyxy_intersect(boxA, boxB):
+
+
 def intersection_area_HBB(boxA, boxB):
     """
     Compute the Intersection Area of two Horizontal Bounding Boxes (HBB)
-    Args: two HBBs with format  [class, x1, y1, x2, y2, x3, y3, x4, y4] with shape (1,9)
+    Args: two HBBs with format  [class, x1, y1, x2, y2] with shape (1,5)
+        (x1, y1): The top-left corner of the box
+        (x2, y2): The bottom-right corner of the box
     Returns: intersection area with shape (1,1)
     """
     if is_HBB_intersect(boxA, boxB):

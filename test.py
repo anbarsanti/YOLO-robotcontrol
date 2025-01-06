@@ -16,14 +16,31 @@ from matplotlib.patches import Rectangle
 
 # # ------------------------------ HBB ---------------------------------
 # print("----------------------HBB Test--------------------------")
-# hbbA = np.array([1, 0.7, 0.3, 0.4, 0.4])
-# hbbB = np.array([1, 0.8, 0.2, 0.2, 0.2])
-# hbbC = np.array([1, 0.35, 0.6, 0.5, 0.4])
-reaching_box = [0.0, 0.5717689394950867, 0.35506153106689453, 0.8555841445922852, 0.7349398136138916]
-desired_box = [1.0, 0.14817076921463013, 0.5333613753318787, 0.391799658536911, 0.8300615549087524]
-hbbF = [1, 0,0,0,0]
-print(is_HBB_intersect(reaching_box, desired_box))
-print("Area between reaching box and desired box", intersection_area_HBB(reaching_box, desired_box))
+hbbA_xywh = np.array([1, 0.7, 0.3, 0.4, 0.4]) #xywh format
+hbbB_xywh = np.array([1, 0.8, 0.2, 0.2, 0.2]) #xywh format
+hbbC_xywh = np.array([1, 0.35, 0.6, 0.5, 0.4]) #xywh format
+hbbD_xyxy = np.array([0, 0.2, 0.2, 0.8, 0.8])
+hbbE_xyxy = np.array([0, 0.3, 0.1, 0.5, 0.9])
+hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
+# print("convert hbbD", cxyxy2xyxyxy(hbbD_xyxy))
+# print("convert hbbE", cxyxy2xyxyxy(hbbE_xyxy))
+# print("convert hbbF", cxyxy2xyxyxy(hbbF_xyxy))
+# print("convert hbbA_xywh", cxywh2xyxyxy(hbbA_xywh))
+# print("convert hbbB_xywh", cxywh2xyxyxy(hbbB_xywh))
+# print("convert hbbC_xywh", cxywh2xyxyxy(hbbC_xywh))
+print("is intersect HBB A and B", is_HBB_xywh_intersect(hbbA_xywh, hbbB_xywh))
+print("is intersect HBB A and C", is_HBB_xywh_intersect(hbbA_xywh, hbbC_xywh))
+print("is intersect HBB B and C", is_HBB_xywh_intersect(hbbB_xywh, hbbC_xywh))
+
+
+
+# print("check vertices hbbA_xywh", convert_HBB_xywh_to_vertices(hbbA_xywh))
+
+# reaching_box = [0.0, 0.59080827236, 0.2633193731079834, 0.844, 0.617902934551239] # Toys
+# desired_box = [1.0, 0.36258264, 0.5401297211647, 0.5640562176704407, 0.8815667033195496] # Box
+# hbbF = [1, 0,0,0,0]
+# print(is_HBB_intersect(reaching_box, desired_box))
+# print("Area between reaching box and desired box", intersection_area_HBB(reaching_box, desired_box))
 
 # print("Area A vs D", intersection_area_HBB(hbbA, hbbC))
 # print("Area B vs D", intersection_area_HBB(hbbB, hbbC))
