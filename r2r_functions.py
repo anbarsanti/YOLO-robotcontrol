@@ -15,6 +15,7 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 import csv
+import os
 import supervision as sv
 import logging
 import rtde as rtde
@@ -103,8 +104,8 @@ def UR5e_start(con, state, watchdog, setp):
     return con, state, watchdog, setp
 
 
-def UR5e_move(con, state, watchdog, setp, desired_value, time_plot,
-              actual_p, actual_q, actual_qd):
+def UR5e_loopmove(con, state, watchdog, setp, desired_value, time_plot,
+              actual_p, actual_q):
     '''
     Execute moving loop for the period of trajectory_time, and record the trajectory data (actual_p, actual_q, actual_qd)
     Args: con, state, watchdog, setp, desired_value, time_start, trajectory_time, time_plot,
@@ -120,20 +121,34 @@ def UR5e_move(con, state, watchdog, setp, desired_value, time_plot,
     new_actual_p = np.array(state.actual_TCP_pose)
     
     # Plotting Purpose
-    time_plot.append(time.time() - time_start)
+    time_plot.append(time.time())
     actual_p = np.vstack((actual_p, new_actual_p))
     actual_q = np.vstack((actual_q, new_actual_q))
-    actual_qd = np.vstack((actual_qd, new_actual_qd))
     
-    return con, state, watchdog, setp, time_plot, actual_p, actual_q, actual_qd
+    return con, state, watchdog, setp, time_plot, actual_p, actual_q
 
-def final_plotting (time_plot, actual_p, actual_q): # , actual_qd):
+def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot):
+    # Generate a unique folder
+    folder_name = f"plot_{time.strftime('%Y%m%d_%H%M')}"
+    
+    # Specify the path for the new folder
+    new_folder_path = os.path.join('results', folder_name)
+    
+    # Create the new folder
+    os.makedirs(new_folder_path, exist_ok=True)
+    
+    ## =================== TOOL POSITION =====================
+    file_path = f"{new_folder_path}/tool_position.csv"
+    np.savetxt(file_path, actual_p, delimiter=",")
+    
     plt.figure()
     plt.plot(time_plot, actual_p[:, 0], label="Actual Tool Position in x[m]")
     plt.legend()
     plt.grid()
     plt.ylabel('Tool Position in x[m]')
     plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'actual_px.png')
+    plt.savefig(file_path)
     
     plt.figure()
     plt.plot(time_plot, actual_p[:, 1], label="Actual Tool Position in y[m]")
@@ -141,6 +156,8 @@ def final_plotting (time_plot, actual_p, actual_q): # , actual_qd):
     plt.grid()
     plt.ylabel('Tool Position in y[m]')
     plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'actual_py.png')
+    plt.savefig(file_path)
     
     plt.figure()
     plt.plot(time_plot, actual_p[:, 2], label="Actual Tool Position in z[m]")
@@ -148,14 +165,21 @@ def final_plotting (time_plot, actual_p, actual_q): # , actual_qd):
     plt.grid()
     plt.ylabel('Tool Position in z[m]')
     plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'actual_pz.png')
+    plt.savefig(file_path)
     
-    # ----------- Joint Position -------------
+    ## =================== JOINT POSITION =====================
+    file_path = f"{new_folder_path}/joint_position.csv"
+    np.savetxt(file_path, actual_q, delimiter=",")
+
     plt.figure()
     plt.plot(time_plot, actual_q[:, 0], label="Actual Joint Position in 1st Joint")
     plt.legend()
     plt.grid()
     plt.ylabel('Joint Position in x')
     plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'actual_q1.png')
+    plt.savefig(file_path)
     
     plt.figure()
     plt.plot(time_plot, actual_q[:, 1], label="Actual Joint Position in 2nd Joint")
@@ -163,6 +187,8 @@ def final_plotting (time_plot, actual_p, actual_q): # , actual_qd):
     plt.grid()
     plt.ylabel('Joint Position in y')
     plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'actual_q2.png')
+    plt.savefig(file_path)
     
     plt.figure()
     plt.plot(time_plot, actual_q[:, 2], label="Actual Joint Position in 3rd Joint")
@@ -170,29 +196,53 @@ def final_plotting (time_plot, actual_p, actual_q): # , actual_qd):
     plt.grid()
     plt.ylabel('Joint Position in z')
     plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'actual_q3.png')
+    plt.savefig(file_path)
     
-    # # ----------- Desired Joint -------------
-    # plt.figure()
-    # plt.plot(time_plot, actual_qd[:, 0], label="Desired Joint Velocity in 1st Joint")
-    # plt.legend()
-    # plt.grid()
-    # plt.ylabel('Joint Velocity in x')
-    # plt.xlabel('Time [sec]')
-    #
-    # plt.figure()
-    # plt.plot(time_plot, actual_qd[:, 1], label="Desired Joint Velocity in 2nd Joint")
-    # plt.legend()
-    # plt.grid()
-    # plt.ylabel('Joint Velocity in y')
-    # plt.xlabel('Time [sec]')
-    #
-    # plt.figure()
-    # plt.plot(time_plot, actual_qd[:, 2], label="Desired Joint Velocity in 3rd Joint")
-    # plt.legend()
-    # plt.grid()
-    # plt.ylabel('Joint Velocity in z')
-    # plt.xlabel('Time [sec]')
-    # plt.show()
+    ## =================== Q_DOT POSITION =====================
+    file_path = f"{new_folder_path}/q_dot.csv"
+    np.savetxt(file_path, q_dot_plot.T, delimiter=",")
+
+    plt.figure()
+    plt.plot(time_plot, q_dot_plot[0], label="q_dot in 1st Joint")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('q1_dot')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'q1_dot_plot.png')
+    plt.savefig(file_path)
+
+    plt.figure()
+    plt.plot(time_plot, q_dot_plot[1], label="q_dot in 2nd Joint")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('q2_dot')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'q2_dot_plot.png')
+    plt.savefig(file_path)
+
+    plt.figure()
+    plt.plot(time_plot, q_dot_plot[2], label="q_dot in 3rd Joint")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('q3_dot')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'q3_dot_plot.png')
+    plt.savefig(file_path)
+    
+    ## =================== AREA =====================
+    plt.figure()
+    plt.plot(time_plot, area_plot, label="Area")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Area')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'area.png')
+    plt.savefig(file_path)
+    
+    transposed_area_plot = np.array(area_plot).reshape(-1,1)
+    file_path = f"{new_folder_path}/area.csv"
+    np.savetxt(file_path, transposed_area_plot, delimiter=",")
 
     return plt
 
@@ -1122,10 +1172,10 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
 	 Args:
 		 reaching_box: the reaching target in YOLO OBB/HBB format
 		 desired_box: the desired target in YOLO OBB/HBB format
-		 actual_q: numpy array of joint angles [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector
+		 actual_q: array of joint angles [q1, q2, q3, q4, q5, q6] in row vector
 		 YOLO HBB format is class_index x_center y_center width height
 	 Returns:
-		 q_dot, the joint velocity of UR5e robotic arm
+		 q_dot, the joint velocity of UR5e robotic arm, with [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector
 	 """
     # -------------------------- REACHING STATE -----------------------------------
     # Precompute & Predefine some terms
@@ -1137,6 +1187,7 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     P_r = 0.002
     n = 2
     speed = 1e-06
+    actualq = np.array(actual_q).reshape((-1, 1)) # Reshape the actual_q
     
     # Conversion for OBB to xywhr format and HBB to xywhr format
     if OBB:
@@ -1158,22 +1209,17 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     # Differentiation of P_R
     epsilon_R = np.array([(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0,0] - d_box[0,0]),
                (2 * k_cy / (n ** 2)) * ((max(0, f_cy)) ** (n - 1)) * (r_box[1,0] - d_box[1,0]), 0, 0, 0])
-    # print("epsilon_R: ", epsilon_R)
     
     # Compute the full Jacobian matrix for current joint position values (actual_q) and position of reaching box
-    J_reaching = (J_o(p_r_box)) @ (J_I(p_r_box)) @ (J_r(actual_q)) # Step 3
-    # print("J_reaching: ", J_reaching)
+    J_reaching = (J_o(p_r_box)) @ (J_I(p_r_box)) @ (J_r(actualq)) # Step 3
     
     # Compute the pseudo inverse of the Jacobian matrix using the Moore-Penrose matrix inversion
     J_reaching_pinv = np.linalg.pinv(J_reaching) # Step 4
-    # print("J_reaching_pinv: ", J_reaching_pinv)
     
     # Delta_Gamma or Gamma dot
     Gamma_dot = speed*(d_box - r_box) # Step 1 & 2
-    # print("Gamma_dot: ", Gamma_dot)
     
     # The Controller
     q_dot = J_reaching_pinv @ Gamma_dot # Step 5. Using np.dot has similar value with using @
-    # print("q_dot: ", q_dot)
     
-    return q_dot
+    return q_dot, epsilon_R

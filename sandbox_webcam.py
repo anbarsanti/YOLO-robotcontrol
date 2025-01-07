@@ -25,7 +25,7 @@ else: # Initialization for HBB case
 ROBOT_HOST = "192.168.18.14"  # virtual machine in from linux host
 ROBOT_PORT = 30004
 config_filename = "control_loop_configuration.xml"
-FREQUENCY = 500 # send data in 500 Hz instead of default 125Hz
+FREQUENCY = 1000 # send data in 500 Hz instead of default 125Hz
 time_start = time.time()
 plotter = True
 trajectory_time = 8
@@ -86,22 +86,22 @@ while cap.isOpened():
 				for i in range(len_cls):
 					cls_i = cls[i].tolist()
 					
-					# Capture the first detected toy's box = desired box
-					if cls_i == 0.0 and desired_box == [0, 0, 0, 0, 0]:
-						desired_box = [*[cls_i], *(xyxyn[i].tolist())] # First toy's box detected
-						# print("desired box", desired_box)
-
-					# Detect the reaching box = the toy
-					if cls_i == 1.0:
-						reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
-						# print("reaching box", reaching_box)
-				
-				# Draw the desired box if it already exists
-				if desired_box != [0, 0, 0, 0, 0]:
-					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)), (int(desired_box[3] * 640), int(desired_box[4] * 480)), (0,255,0), 2)
-					cv2.putText(annotated_frame, "Desired Box", (int(desired_box[1] * 640), int(desired_box[2] * 480)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
-				
-				area = intersection_area_HBB_xyxy(desired_box, reaching_box)
+				# 	# Capture the first detected toy's box = desired box
+				# 	if cls_i == 0.0 and desired_box == [0, 0, 0, 0, 0]:
+				# 		desired_box = [*[cls_i], *(xyxyn[i].tolist())] # First toy's box detected
+				# 		# print("desired box", desired_box)
+				#
+				# 	# Detect the reaching box = the toy
+				# 	if cls_i == 1.0:
+				# 		reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
+				# 		# print("reaching box", reaching_box)
+				#
+				# # Draw the desired box if it already exists
+				# if desired_box != [0, 0, 0, 0, 0]:
+				# 	cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)), (int(desired_box[3] * 640), int(desired_box[4] * 480)), (0,255,0), 2)
+				# 	cv2.putText(annotated_frame, "Desired Box", (int(desired_box[1] * 640), int(desired_box[2] * 480)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
+				#
+				# area = intersection_area_HBB_xyxy(desired_box, reaching_box)
 				
 				# Send the q_dot to UR5e
 				list_to_setp(setp, q_dot)
@@ -110,15 +110,14 @@ while cap.isOpened():
 				new_actual_p = np.array(state.actual_TCP_pose)
 				new_actual_q = np.array(state.actual_q)
 				
-				# Controller
-				q_dot = r2r_control(desired_box, reaching_box, new_actual_q, OBB=OBB)
-				print("q_dot", q_dot)
+				# # Controller
+				# q_dot = r2r_control(desired_box, reaching_box, new_actual_q, OBB=OBB)
+				# print("q_dot", q_dot)
 				
 				# # # Plotting Purpose
 				# time_plot.append(time.time() - time_start)
 				# actual_p = np.vstack((actual_p, new_actual_p))
 				# actual_q = np.vstack((actual_q, new_actual_q))
-
 			
 			# Display the annotated frame
 			cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)

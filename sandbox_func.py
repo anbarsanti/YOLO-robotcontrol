@@ -6,27 +6,32 @@ import sys
 sys.path.append('../RTDE_Python_Client_Library')
 from r2r_functions import *
 import numpy as np
-
 ## ====================================  HBB TEST ====================================
 ## print("==================================== HBB Test ==================================== ")
 # hbbA_xywh = np.array([1, 0.7, 0.3, 0.4, 0.4]) #xywh format
 # hbbB_xywh = np.array([1, 0.8, 0.2, 0.2, 0.2]) #xywh format
 # hbbC_xywh = np.array([1, 0.35, 0.6, 0.5, 0.4]) #xywh format
-hbbD_xyxy = np.array([0, 0.2, 0.2, 0.8, 0.8])
-hbbE_xyxy = np.array([0, 0.3, 0.1, 0.5, 0.9])
-hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
+# hbbD_xyxy = np.array([0, 0.2, 0.2, 0.8, 0.8])
+# hbbE_xyxy = np.array([0, 0.3, 0.1, 0.5, 0.9])
+# hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
+# #
+# # print("area HBB A and B", intersection_area_HBB_xywh(hbbA_xywh, hbbB_xywh))
+# # print("area HBB A and C", intersection_area_HBB_xywh(hbbA_xywh, hbbC_xywh))
+# # print("area HBB B and C", intersection_area_HBB_xywh(hbbB_xywh, hbbC_xywh))
+# #
+# # print("area HBB D and E", intersection_area_HBB_xyxy(hbbD_xyxy, hbbE_xyxy))
+# # print("area HBB D and F", intersection_area_HBB_xyxy(hbbD_xyxy, hbbF_xyxy))
+# # print("area HBB E and F", intersection_area_HBB_xyxy(hbbE_xyxy, hbbF_xyxy))
 #
-# print("area HBB A and B", intersection_area_HBB_xywh(hbbA_xywh, hbbB_xywh))
-# print("area HBB A and C", intersection_area_HBB_xywh(hbbA_xywh, hbbC_xywh))
-# print("area HBB B and C", intersection_area_HBB_xywh(hbbB_xywh, hbbC_xywh))
+# print("hbbD in xywhr format", cxyxy2xywhr(hbbD_xyxy))
+# print("hbbE in xywhr format", cxyxy2xywhr(hbbE_xyxy))
+# print("hbbF in xywhr format", cxyxy2xywhr(hbbF_xyxy))
 #
-# print("area HBB D and E", intersection_area_HBB_xyxy(hbbD_xyxy, hbbE_xyxy))
-# print("area HBB D and F", intersection_area_HBB_xyxy(hbbD_xyxy, hbbF_xyxy))
-# print("area HBB E and F", intersection_area_HBB_xyxy(hbbE_xyxy, hbbF_xyxy))
-
-print("hbbD in xywhr format", cxyxy2xywhr(hbbD_xyxy))
-print("hbbE in xywhr format", cxyxy2xywhr(hbbE_xyxy))
-print("hbbF in xywhr format", cxyxy2xywhr(hbbF_xyxy))
+q = [    0.39781,    -0.60547,   0.0021877,   0.0076568,   0.0032815,  -0.0010938]
+# q_reshape = np.array(q).reshape((-1,1))
+# print("q_reshape", q_reshape)
+transposed = np.array(q).reshape(-1,1)
+print(transposed)
 
 
 

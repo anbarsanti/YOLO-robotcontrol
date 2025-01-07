@@ -2,7 +2,7 @@
 ﷽
 by @anbarsanti
 """
-
+import sys
 sys.path.append('../RTDE_Python_Client_Library')
 import logging
 import rtde as rtde
@@ -11,11 +11,10 @@ from matplotlib import pyplot as plt
 from YOLOv11.min_jerk_planner_translation import PathPlanTranslation
 import time
 from r2r_functions import *
-
 import numpy as np
 import math
 import torch
-import sys
+
 
 ## ========================= INITIALIZATION OF ROBOT COMMUNICATION  =========================
 # ROBOT_HOST = "10.149.230.168" # in robotics lab
@@ -40,14 +39,14 @@ con, state, watchdog, setp = UR5e_start(con, state, watchdog, setp)
 time_plot = [0]
 actual_p = np.array(state.actual_TCP_pose)
 actual_q = np.array(state.actual_q)
+print(actual_q)
 actual_qd = np.array(state.actual_qd)
-con, state, watchdog, setp, actual_p, actual_q, actual_qd= UR5e_loop(con, state, watchdog, setp, desired_value,
-																							time_start, trajectory_time, time_plot,
-																							actual_p, actual_q, actual_qd)
+con, state, watchdog, setp, time_plot, actual_p, actual_q = UR5e_loopmove(con, state, watchdog, setp, desired_value,
+																							time_plot, actual_p, actual_q)
 ## =========================  DISCONNECTING THE UR5E ========================================
 con.send(watchdog)
 con.send_pause()
 con.disconnect()
 
 ## =========================  FINAL PLOTTING ==================================================
-final_plotting(time_plot, actual_p, actual_q, actual_qd)
+final_plotting(time_plot, actual_p, actual_q)
