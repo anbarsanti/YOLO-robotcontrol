@@ -82,6 +82,8 @@ if OBB==True: # Initialization for OBB case
 else: # Initialization for HBB case
 	desired_box = [0, 0, 0, 0, 0]
 	reaching_box = [0, 0, 0, 0, 0]
+	
+r_desired_box = None
 
 ## ========================= INITIALIZATION OF ROBOT COMMUNICATION  =========================
 # ROBOT_HOST = "10.149.230.168" # in robotics lab
@@ -106,7 +108,7 @@ con, state, watchdog, setp = UR5e_start(con, state, watchdog, setp)
 time_plot = [0]
 actual_p = np.array(state.actual_TCP_pose)
 actual_q = np.array(state.actual_q)
-actual_qd = np.array(state.actual_qd)
+# actual_qd = np.array(state.actual_qd)
 # con, state, watchdog, setp, actual_p, actual_q, actual_qd= UR5e_loop(con, state, watchdog, setp, desired_value,
 # 																							time_start, trajectory_time, time_plot,
 # 																							actual_p, actual_q, actual_qd)
@@ -130,13 +132,17 @@ while cap.isOpened():
 		# persist = True --> to maintain track continuity between frames
 		results = model.track(frame, stream=True, show=True, persist=True,
 									 tracker='bytetrack.yaml')  # Tracking with byteTrack
-		
+
 		# Process, extract, and visualize the results
+		# Source: https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
+		
 		for r in results:
 			annotated_frame = r.plot()
 			
-			# Results Documentation:
-			# https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
+			# Plot the annotated desired box
+			if r_desired_box is not None:
+				print("r_desired_box", r_desired_box)
+				annotated_desired_box = r_desired_box.plot()
 			
 			if OBB == True:
 				# Data Extraction from object tracking with OBB format
@@ -153,23 +159,33 @@ while cap.isOpened():
 				xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
 				len_cls = len(cls)
 				for i in range(len_cls):
-					detected_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]  # Append class with its HBB
+					cls_i = cls[i].tolist()
+					detected_box = [*[cls_i], *(xyxyn[i].tolist())]  # Append class with its HBB
+					print("detected box", detected_box)
 					
-				list_to_setp(setp, desired_value)
-				con.send(setp)
-				state = con.receive()
-				new_actual_q = np.array(state.actual_q)
-				new_actual_qd = np.array(state.actual_qd)
-				new_actual_p = np.array(state.actual_TCP_pose)
-				#
-				# # Plotting Purpose
-				time_plot.append(time.time() - time_start)
-				actual_p = np.vstack((actual_p, new_actual_p))
-				actual_q = np.vstack((actual_q, new_actual_q))
-				actual_qd = np.vstack((actual_qd, new_actual_qd))
+					# Capture the first detected toy's box
+					if cls_i == 0.0 and desired_box == [0, 0, 0, 0, 0]:
+						print("first box detected different than zeros")
+						r_desired_box = r
+						desired_box = detected_box
+						
+				# # Send the desired value to UR5e
+				# list_to_setp(setp, desired_value)
+				# con.send(setp)
+				# state = con.receive()
+				# new_actual_p = np.array(state.actual_TCP_pose)
+				# new_actual_q = np.array(state.actual_q)
+				# # new_actual_qd = np.array(state.actual_qd)
+				# #
+				# # # Plotting Purpose
+				# time_plot.append(time.time() - time_start)
+				# actual_p = np.vstack((actual_p, new_actual_p))
+				# actual_q = np.vstack((actual_q, new_actual_q))
+				# # actual_qd = np.vstack((actual_qd, new_actual_qd))
 			
 			# Display the annotated frame
 			cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
+			cv2.imshow(annotated_desired_box)
 		
 		# Break the loop if 'q' is pressed
 		if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -187,4 +203,4 @@ con.send_pause()
 con.disconnect()
 
 ## =========================  FINAL PLOTTING ==================================================
-final_plotting(time_plot, actual_p, actual_q, actual_qd)
+final_plotting(time_plot, actual_p, actual_q)#, actual_qd)

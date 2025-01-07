@@ -127,7 +127,7 @@ def UR5e_move(con, state, watchdog, setp, desired_value, time_plot,
     
     return con, state, watchdog, setp, time_plot, actual_p, actual_q, actual_qd
 
-def final_plotting (time_plot, actual_p, actual_q, actual_qd):
+def final_plotting (time_plot, actual_p, actual_q): # , actual_qd):
     plt.figure()
     plt.plot(time_plot, actual_p[:, 0], label="Actual Tool Position in x[m]")
     plt.legend()
@@ -171,28 +171,28 @@ def final_plotting (time_plot, actual_p, actual_q, actual_qd):
     plt.ylabel('Joint Position in z')
     plt.xlabel('Time [sec]')
     
-    # ----------- Desired Joint -------------
-    plt.figure()
-    plt.plot(time_plot, actual_qd[:, 0], label="Desired Joint Velocity in 1st Joint")
-    plt.legend()
-    plt.grid()
-    plt.ylabel('Joint Velocity in x')
-    plt.xlabel('Time [sec]')
-    
-    plt.figure()
-    plt.plot(time_plot, actual_qd[:, 1], label="Desired Joint Velocity in 2nd Joint")
-    plt.legend()
-    plt.grid()
-    plt.ylabel('Joint Velocity in y')
-    plt.xlabel('Time [sec]')
-    
-    plt.figure()
-    plt.plot(time_plot, actual_qd[:, 2], label="Desired Joint Velocity in 3rd Joint")
-    plt.legend()
-    plt.grid()
-    plt.ylabel('Joint Velocity in z')
-    plt.xlabel('Time [sec]')
-    plt.show()
+    # # ----------- Desired Joint -------------
+    # plt.figure()
+    # plt.plot(time_plot, actual_qd[:, 0], label="Desired Joint Velocity in 1st Joint")
+    # plt.legend()
+    # plt.grid()
+    # plt.ylabel('Joint Velocity in x')
+    # plt.xlabel('Time [sec]')
+    #
+    # plt.figure()
+    # plt.plot(time_plot, actual_qd[:, 1], label="Desired Joint Velocity in 2nd Joint")
+    # plt.legend()
+    # plt.grid()
+    # plt.ylabel('Joint Velocity in y')
+    # plt.xlabel('Time [sec]')
+    #
+    # plt.figure()
+    # plt.plot(time_plot, actual_qd[:, 2], label="Desired Joint Velocity in 3rd Joint")
+    # plt.legend()
+    # plt.grid()
+    # plt.ylabel('Joint Velocity in z')
+    # plt.xlabel('Time [sec]')
+    # plt.show()
 
     return plt
 
@@ -1126,7 +1126,7 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     else:  # HBB
         r_box = np.array([reaching_box[1:5], 0]).reshape(-1,1)
         d_box = np.array([desired_box[1:5], 0]).reshape(-1,1)
-        p_r_box = cxywh2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
+        p_r_box = cxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
     
     # Reaching State --> Objective Function
     f_cx = abs(r_box[0,0] - d_box[0,0]) ** 2 - e_cx ** 2
