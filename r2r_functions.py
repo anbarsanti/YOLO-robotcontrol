@@ -888,14 +888,14 @@ def J_o(p):
     y2 = p[3,0]
     x3 = p[4,0]
     y3 = p[5,0]
-    delta_x1 = x3 - x1;
-    delta_y1 = y1 - y3;
-    delta_y2 = y3 - y2;
-    delta_x2 = x3 - x2;
+    delta_x1 = x3 - x1
+    delta_y1 = y1 - y3
+    delta_y2 = y3 - y2
+    delta_x2 = x3 - x2
     theta = np.arctan2(delta_y1, delta_x1)
-    denom1 = delta_x1 ** 2 + delta_y1 ** 2;
+    denom1 = delta_x1 ** 2 + delta_y1 ** 2
     sqrt_denom1 = np.sqrt(denom1)
-    denom2 = delta_x2 ** 2 + delta_y2 ** 2;
+    denom2 = delta_x2 ** 2 + delta_y2 ** 2
     sqrt_denom2 = np.sqrt(denom2)
     
     # Ensure inputs are not zero to avoid division by zero
