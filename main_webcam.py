@@ -2,20 +2,10 @@
 ﷽
 by @anbarsanti
 """
-
 import sys
 sys.path.append('../RTDE_Python_Client_Library')
-import logging
-import rtde as rtde
-import rtde as rtde_config
-from matplotlib import pyplot as plt
-from YOLOv11.min_jerk_planner_translation import PathPlanTranslation
-import time
 from r2r_functions import *
 import numpy as np
-import math
-import torch
-
 
 ## ====================== INITIALIZATION OF TRACKING STUFF ==================================
 OBB = False
@@ -35,7 +25,7 @@ else: # Initialization for HBB case
 ROBOT_HOST = "192.168.18.14"  # virtual machine in from linux host
 ROBOT_PORT = 30004
 config_filename = "control_loop_configuration.xml"
-FREQUENCY = 250 # send data in 500 Hz instead of default 125Hz
+FREQUENCY = 500 # send data in 500 Hz instead of default 125Hz
 time_start = time.time()
 plotter = True
 trajectory_time = 8
@@ -45,15 +35,13 @@ desired_value = [-0.2, -0.5, 0.2, 0.7, 0.3, -0.1]*5
 
 ## =========================  UR5E INITIALIZATION ==================================================
 con, state, watchdog, setp = UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename)
-
-## =========================  UR5E MOVE TO INITIAL POSITION =========================
-con, state, watchdog, setp = UR5e_start(con, state, watchdog, setp)
-
-## ========================= UR5E LOOPING MOVE TO DESIRED VALUE =========================
 time_plot = [0]
 actual_p = np.array(state.actual_TCP_pose)
 actual_q = np.array(state.actual_q)
-actual_qd = np.array(state.actual_qd)
+q_dot = np.zeros((6,1))
+
+## =========================  UR5E MOVE TO INITIAL POSITION =========================
+con, state, watchdog, setp = UR5e_start(con, state, watchdog, setp)
 
 # ## ======================= TRACKING STARTS ==================================
 # Initialize locked_box, the box that is locked
@@ -74,15 +62,14 @@ while cap.isOpened():
 		# persist = True --> to maintain track continuity between frames
 		results = model.track(frame, stream=True, show=True, persist=True,
 									 tracker='bytetrack.yaml')  # Tracking with byteTrack
-		
+
 		# Process, extract, and visualize the results
+		# Source: https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
+		
 		for r in results:
 			annotated_frame = r.plot()
 			
-			# Results Documentation:
-			# https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
-			
-			if OBB == True:
+			if OBB == True: # OBB Tracking
 				# Data Extraction from object tracking with OBB format
 				cls = r.obb.cls  # only applied in YOLO OBB model
 				xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
@@ -91,32 +78,51 @@ while cap.isOpened():
 					xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
 					detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
 			
-			else:  # HBB
+			else:  # HBB Tracking
 				# Data Extraction from object tracking with HBB format
 				cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
 				xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
 				len_cls = len(cls)
 				for i in range(len_cls):
-					detected_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]  # Append class with its HBB
+					cls_i = cls[i].tolist()
+					
+					# Capture the first detected toy's box = desired box
+					if cls_i == 0.0 and desired_box == [0, 0, 0, 0, 0]:
+						desired_box = [*[cls_i], *(xyxyn[i].tolist())] # First toy's box detected
+						# print("desired box", desired_box)
+
+					# Detect the reaching box = the toy
+					if cls_i == 1.0:
+						reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
+						# print("reaching box", reaching_box)
 				
-				# Send the Value to UR5e
-				list_to_setp(setp, desired_value)
+				# Draw the desired box if it already exists
+				if desired_box != [0, 0, 0, 0, 0]:
+					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)), (int(desired_box[3] * 640), int(desired_box[4] * 480)), (0,255,0), 2)
+					cv2.putText(annotated_frame, "Desired Box", (int(desired_box[1] * 640), int(desired_box[2] * 480)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
+				
+				area = intersection_area_HBB_xyxy(desired_box, reaching_box)
+				
+				# Send the q_dot to UR5e
+				list_to_setp(setp, q_dot)
 				con.send(setp)
-				
 				state = con.receive()
-				new_actual_q = np.array(state.actual_q)
-				new_actual_qd = np.array(state.actual_qd)
 				new_actual_p = np.array(state.actual_TCP_pose)
+				new_actual_q = np.array(state.actual_q)
 				
-				# Plotting Purpose
-				time_plot.append(time.time() - time_start)
-				actual_p = np.vstack((actual_p, new_actual_p))
-				actual_q = np.vstack((actual_q, new_actual_q))
-				actual_qd = np.vstack((actual_qd, new_actual_qd))
+				# Controller
+				q_dot = r2r_control(desired_box, reaching_box, new_actual_q, OBB=OBB)
+				print("q_dot", q_dot)
+				
+				# # # Plotting Purpose
+				# time_plot.append(time.time() - time_start)
+				# actual_p = np.vstack((actual_p, new_actual_p))
+				# actual_q = np.vstack((actual_q, new_actual_q))
+
 			
 			# Display the annotated frame
 			cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
-		
+			
 		# Break the loop if 'q' is pressed
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
@@ -133,4 +139,4 @@ con.send_pause()
 con.disconnect()
 
 ## =========================  FINAL PLOTTING ==================================================
-final_plotting(time_plot, actual_p, actual_q, actual_qd)
+final_plotting(time_plot, actual_p, actual_q)

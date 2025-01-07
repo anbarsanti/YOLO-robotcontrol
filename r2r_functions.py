@@ -576,7 +576,27 @@ def cxyxy2xyxyxy(HBB): # Checked
     x3 = x2
     y3 = y1
     
-    return np.array([x1, y1, x2, y2, x3, y3]).reshape(-1, 1) # Ch
+    return np.array([x1, y1, x2, y2, x3, y3]).reshape(-1, 1)
+
+def cxyxy2xywhr(HBB):  # Checked
+    """
+    Converts bounding box with format [class x1 y1 x2 y2] to [x1 y1 x2 y2 x3 y3] as image feature vector
+    Args:
+        horizontal bounding box with format [class x1 y1 x2 y2]
+        (x1, y1): The top-left corner of the box
+        (x2, y2): The bottom-right corner of the box
+    Return:
+        image feature vector with [x1 y1 x2 y2 x3 y3]
+        x1 y1 and x2 y2 represent the midpoint on the adjacent two sides of the rotating bounding box
+        x3 y3 denotes the center of horizontal bounding box
+    """
+    # Calculate
+    x = (HBB[1] + HBB[3])/2
+    y = (HBB[2] + HBB[4])/2
+    w = (HBB[3] - HBB[1])
+    h = (HBB[4] - HBB[2])
+    
+    return np.array([x, y, w, h, 0]).reshape(-1, 1)
     
 def line_intersection(line1, line2):
     """
@@ -1100,8 +1120,8 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
 	 (3)Scaling & Screwing, and finally, (4) Desired Overlapping.
 	 Source: https://www.rosroboticslearning.com/jacobian
 	 Args:
-		 reaching_box: the reaching target in YOLO OBB format
-		 desired_box: the desired target in YOLO OBB format
+		 reaching_box: the reaching target in YOLO OBB/HBB format
+		 desired_box: the desired target in YOLO OBB/HBB format
 		 actual_q: numpy array of joint angles [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector
 		 YOLO HBB format is class_index x_center y_center width height
 	 Returns:
@@ -1118,14 +1138,14 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     n = 2
     speed = 1e-06
     
-    # Conversion for OBB or HBB to xywhr format
+    # Conversion for OBB to xywhr format and HBB to xywhr format
     if OBB:
         r_box = cxyxyxyxy2xywhr(reaching_box)
         d_box = cxyxyxyxy2xywhr(desired_box)
         p_r_box = cxyxyxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for OBB reaching box
     else:  # HBB
-        r_box = np.array([reaching_box[1:5], 0]).reshape(-1,1)
-        d_box = np.array([desired_box[1:5], 0]).reshape(-1,1)
+        r_box = cxyxy2xywhr(reaching_box)
+        d_box = cxyxy2xywhr(desired_box)
         p_r_box = cxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
     
     # Reaching State --> Objective Function
