@@ -127,7 +127,7 @@ def UR5e_loopmove(con, state, watchdog, setp, desired_value, time_plot,
     
     return con, state, watchdog, setp, time_plot, actual_p, actual_q
 
-def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot):
+def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilon_plot):
     # Generate a unique folder
     folder_name = f"plot_{time.strftime('%Y%m%d_%H%M')}"
     
@@ -243,6 +243,28 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot):
     transposed_area_plot = np.array(area_plot).reshape(-1,1)
     file_path = f"{new_folder_path}/area.csv"
     np.savetxt(file_path, transposed_area_plot, delimiter=",")
+    
+    ## =================== EPSILON =====================
+    plt.figure()
+    plt.plot(time_plot, epsilon_plot[:,0], label="Epsilon_1")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Epsilon_1')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'epsilon_1.png')
+    plt.savefig(file_path)
+    
+    plt.figure()
+    plt.plot(time_plot, epsilon_plot[:,2], label="Epsilon_2")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Epsilon_1')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'epsilon_2.png')
+    plt.savefig(file_path)
+
+    file_path = f"{new_folder_path}/epsilon.csv"
+    np.savetxt(file_path, epsilon_plot, delimiter=",")
 
     return plt
 
@@ -1185,8 +1207,8 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     k_cy = 0.0001
     k = 1
     P_r = 0.002
-    n = 2
-    speed = 1e-06
+    n = 3
+    speed = 1e-02
     actualq = np.array(actual_q).reshape((-1, 1)) # Reshape the actual_q
     
     # Conversion for OBB to xywhr format and HBB to xywhr format
