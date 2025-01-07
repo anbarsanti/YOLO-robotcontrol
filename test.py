@@ -82,8 +82,6 @@ if OBB==True: # Initialization for OBB case
 else: # Initialization for HBB case
 	desired_box = [0, 0, 0, 0, 0]
 	reaching_box = [0, 0, 0, 0, 0]
-	
-r_desired_box = None
 
 ## ========================= INITIALIZATION OF ROBOT COMMUNICATION  =========================
 # ROBOT_HOST = "10.149.230.168" # in robotics lab
@@ -139,11 +137,6 @@ while cap.isOpened():
 		for r in results:
 			annotated_frame = r.plot()
 			
-			# Plot the annotated desired box
-			if r_desired_box is not None:
-				print("r_desired_box", r_desired_box)
-				annotated_desired_box = r_desired_box.plot()
-			
 			if OBB == True:
 				# Data Extraction from object tracking with OBB format
 				cls = r.obb.cls  # only applied in YOLO OBB model
@@ -160,15 +153,22 @@ while cap.isOpened():
 				len_cls = len(cls)
 				for i in range(len_cls):
 					cls_i = cls[i].tolist()
-					detected_box = [*[cls_i], *(xyxyn[i].tolist())]  # Append class with its HBB
-					print("detected box", detected_box)
 					
-					# Capture the first detected toy's box
+					# Capture the first detected toy's box = desired box
 					if cls_i == 0.0 and desired_box == [0, 0, 0, 0, 0]:
-						print("first box detected different than zeros")
-						r_desired_box = r
-						desired_box = detected_box
-						
+						desired_box = [*[cls_i], *(xyxyn[i].tolist())] # First toy's box detected
+						# print("desired box", desired_box)
+
+					# Detect the reaching box = the toy
+					if cls_i == 1.0:
+						reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
+						# print("reaching box", reaching_box)
+				
+				# Draw the desired box if it already exists
+				if desired_box != [0, 0, 0, 0, 0]:
+					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)), (int(desired_box[3] * 640), int(desired_box[4] * 480)), (0,255,0), 2)
+					cv2.putText(annotated_frame, "Desired Box", (int(desired_box[1] * 640), int(desired_box[2] * 480)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
+				
 				# # Send the desired value to UR5e
 				# list_to_setp(setp, desired_value)
 				# con.send(setp)
@@ -185,8 +185,7 @@ while cap.isOpened():
 			
 			# Display the annotated frame
 			cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
-			cv2.imshow(annotated_desired_box)
-		
+			
 		# Break the loop if 'q' is pressed
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
