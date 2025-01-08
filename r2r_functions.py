@@ -706,20 +706,43 @@ def sort_points_clockwise(p):
     Args: list of array of points with format [[x, y],[x, y],[x, y],[x, y],...,[x, y]]
     Return: sorted list of array with format [[x, y],[x, y],[x, y],...,[x, y]] in clockwise order
     """
-    # Convert to numpy array
-    points = np.array(p)
-    
-    # Calculate centroid
-    centroid = np.mean(points, axis=0)
-    
-    # Compute angles
-    angles = np.arctan2(points[:, 1] - centroid[1], points[:, 0] - centroid[0])
-    
-    # Sort points based on angles
-    sorted_indices = np.argsort(angles)
-    sorted_points = points[sorted_indices]
+    # Check whether there are points
+    if not np.array_equal(p, np.array([])):
+        # Convert to numpy array
+        points = np.array(p)
+        
+        # Calculate centroid
+        centroid = np.mean(points, axis=0)
+        
+        # Compute angles
+        angles = np.arctan2(points[:, 1] - centroid[1], points[:, 0] - centroid[0])
+        
+        # Sort points based on angles
+        sorted_indices = np.argsort(angles)
+        sorted_points = points[sorted_indices]
+    else:
+        sorted_points = []
 
     return sorted_points
+
+def intersection_points_HBB_xyxy(boxA, boxB):
+    """
+    Find the intersection points between overlapped two horizontal bounding boxes
+    Args: two horizontal bounding boxes with format [class x1 y1 x2 y2] with shape (1,5)
+    Return: intersection points with shape (1,4) or (1,0) if no intersection
+    """
+    intersection_points = []
+
+    if is_HBB_xyxy_intersect(boxA, boxB):
+        # Calculate the coordinates of intersection rectangle
+        x_left = max(boxA[1], boxB[1])
+        y_top = max(boxA[2], boxB[2])
+        x_right = min(boxA[3], boxB[3])
+        y_bottom = min(boxA[4], boxB[4])
+        
+        intersection_points = [[x_left, y_top], [x_right, y_top], [x_right, y_bottom], [x_left, y_bottom]]
+       
+    return intersection_points
 
 def intersection_points_OBB_diy(boxA, boxB):
     """
@@ -761,7 +784,8 @@ def intersection_points_OBB_diy(boxA, boxB):
     sorted_points = sort_points_clockwise(intersection_points)
 
     return sorted_points
-
+    # return intersection_points
+ 
 def intersection_area_OBB_diy(boxA, boxB):
     """
     Compute the Area using Triangle Formula by Mauren Abreu de Souza
@@ -866,9 +890,9 @@ def J_alpha(intersection_points):
     """
     Return J_alpha, the Jacobian matrix that maps the area from intersection points to image space.
     Args:
-        the vertices of the polygon
+        the vertices of the polygon [[x1,y1], [x2,y2], ... [xn,yn]] with shape (1,2p)
     Returns:
-        J_alpha
+        J_alpha with the shape (1, 2p)
     """
     len_points = len(intersection_points)
     jacobian = []
@@ -884,28 +908,27 @@ def J_alpha(intersection_points):
     
     return J_alpha
 
-def J_a(intersection_points, depth):
+def J_a(intersection_points, depth=1000):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
-		  a list of intersection points
+		  p = a list of intersection points with format [[x1,y1], [x2,y2], ... [xn,yn]] with shape (1,2p)
 	 Returns:
-		  J_I (8x3 matrix)
+		  J_I (8x6 matrix)
 	 """
     # Precompute general terms
     f_x = 618.072
     f_y = 618.201
-    depth = 1000.0
     len_points = len(intersection_points)
     p = intersection_points
     jacobian = []
     
     # Define the Jacobian
     for i in range(len_points):
-        j = [f_x / depth, 0, -p[i][0] / depth, -p[i][0] * p[i][1] / f_x, (f_x * f_x + p[i][0] * p[i][0]) / f_x,
-             -p[i][1]]
+        j = [f_x / depth, 0, -p[i][0] / depth, -p[i][0] * p[i][1] / f_x, (f_x * f_x + p[i][0] * p[i][0]) / f_x, -p[i][1]]
         k = [0, f_y / depth, -p[i][1] / depth, -(f_y * f_y + p[i][1] * p[i][1]) / f_y, p[i][0] * p[i][1] / f_y, p[i][0]]
-        jacobian.extend([[j], [k]])
+        jacobian.append(j)
+        jacobian.append(k)
     
     # Compute the determinant to check singularity
     J_a = np.array(jacobian)
@@ -950,7 +973,7 @@ def J_o(p):
 		  p_1 and p_2 represent the midpoint on the adjacent two sides of the rotating bounding box
 		  p_3 denotes the center of rotation bounding box
 	 Returns:
-		 The jacobian matrix J_o (5x4 matrix)
+		 The jacobian matrix J_o (5x6 matrix)
 	 """
     # Precompute common terms
     jacobian = np.zeros((5, 6))
@@ -1201,39 +1224,73 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
 	 """
     # -------------------------- REACHING STATE -----------------------------------
     # Precompute & Predefine some terms
+    n = 3
+    # Reaching State
     e_cx = 0.002
     e_cy = 0.003
     k_cx = 0.0001
     k_cy = 0.0001
-    k = 1
     P_r = 0.002
-    n = 3
+    # Overlapping State
+    k_amin = 0.002
+    k_amax = 0.002
+    A_dmin = 0.6 # 60%
+    A_dmax = 0.9 # 90%
+    # Overall controller
+    k = 1
+
     speed = 1e-02
     actualq = np.array(actual_q).reshape((-1, 1)) # Reshape the actual_q
     
-    # Conversion for OBB to xywhr format and HBB to xywhr format
+    # Prepare for Gamma Calculation and Area calculation
     if OBB:
-        r_box = cxyxyxyxy2xywhr(reaching_box)
-        d_box = cxyxyxyxy2xywhr(desired_box)
+        r_box = cxyxyxyxy2xywhr(reaching_box) # Conversion for OBB to xywhr format for Gamma calculation
+        d_box = cxyxyxyxy2xywhr(desired_box) # Conversion for OBB to xywhr format for Gamma calculation
         p_r_box = cxyxyxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for OBB reaching box
+        area = intersection_area_OBB_diy(reaching_box, desired_box)
+        interpoints = intersection_points_OBB_diy(reaching_box, desired_box)
     else:  # HBB
-        r_box = cxyxy2xywhr(reaching_box)
-        d_box = cxyxy2xywhr(desired_box)
+        r_box = cxyxy2xywhr(reaching_box) # Conversion for HBB to xywhr format for Gamma calculation
+        d_box = cxyxy2xywhr(desired_box) # Conversion for HBB to xywhr format for Gamma calculation
         p_r_box = cxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
+        area = intersection_area_HBB_xyxy(reaching_box, desired_box)
+        interpoints = intersection_points_HBB_xyxy(reaching_box, desired_box)
     
-    # Reaching State --> Objective Function
+    # Objective Function for Reaching State
     f_cx = abs(r_box[0,0] - d_box[0,0]) ** 2 - e_cx ** 2
     f_cy = abs(r_box[1,0] - d_box[1,0]) ** 2 - e_cy ** 2
+    
+    # Objective Function for Overlapping State
+    f_amin = A_dmin - area
+    f_amax = area - A_dmax
     
     # Reaching State --> Energy Function
     P_R = (k_cx / n) * (max(0, f_cx) ** n) + (k_cy / n) * (max(0, f_cy) ** n) + P_r
     
-    # Differentiation of P_R
-    epsilon_R = np.array([(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0,0] - d_box[0,0]),
-               (2 * k_cy / (n ** 2)) * ((max(0, f_cy)) ** (n - 1)) * (r_box[1,0] - d_box[1,0]), 0, 0, 0])
+    # Overlapping State --> Energy Function
+    P_A = (k_amin/n) * (max(0, f_amin) ** n) + (k_amax/n) * (max(0, f_amax) ** n)
     
-    # Compute the full Jacobian matrix for current joint position values (actual_q) and position of reaching box
-    J_reaching = (J_o(p_r_box)) @ (J_I(p_r_box)) @ (J_r(actualq)) # Step 3
+    # Epsilon_A
+    P_R_dot = np.array([(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0,0] - d_box[0,0]),
+                        (2 * k_cy / (n ** 2)) * ((max(0, f_cy)) ** (n - 1)) * (r_box[1,0] - d_box[1,0]),
+                        0,
+                        0,
+                        0]) # dimension (5,1)
+    
+    # Differentiation of P_A
+    P_A_dot = ((-k_amin/(n**2)) * (max(0, f_amin) ** (n-1)) + (k_amax/(n**2)) * (max(0, f_amax) ** (n-1)))
+    
+    # Epsilon_A
+    epsilon_A = P_R*P_A_dot
+    
+    # Epsilon_S (have not yet with P_S_dot variable)
+    epsilon_S = P_A*P_R_dot
+    
+    # Compute the Jacobian Matrix J_o @ J_I @ J_r @ q_dot
+    J_o_I_r = (J_o(p_r_box)) @ (J_I(p_r_box)) @ (J_r(actualq))
+    
+    # Compute the Jacobian Matrix J_alpha @ J_a @ J_r @ q_dot
+    J_alpha_a_r = (J_alpha(interpoints)) @ (J_a(interpoints)) @ (J_r(actualq))
     
     # Compute the pseudo inverse of the Jacobian matrix using the Moore-Penrose matrix inversion
     J_reaching_pinv = np.linalg.pinv(J_reaching) # Step 4
@@ -1244,4 +1301,4 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     # The Controller
     q_dot = J_reaching_pinv @ Gamma_dot # Step 5. Using np.dot has similar value with using @
     
-    return q_dot, epsilon_R
+    return q_dot, epsilon_A, epsilon_S, J_o_I_r, J_alpha_a_r
