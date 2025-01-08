@@ -3,6 +3,9 @@
 by @anbarsanti
 """
 import sys
+
+from YOLOv11.r2r_functions import intersection_points_HBB_xyxy
+
 sys.path.append('../RTDE_Python_Client_Library')
 from r2r_functions import *
 import numpy as np
@@ -13,7 +16,7 @@ import numpy as np
 # hbbC_xywh = np.array([1, 0.35, 0.6, 0.5, 0.4]) #xywh format
 hbbD_xyxy = np.array([0, 0.2, 0.2, 0.8, 0.8])
 hbbE_xyxy = np.array([0, 0.3, 0.1, 0.5, 0.9])
-# hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
+hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
 # #
 # # print("area HBB A and B", intersection_area_HBB_xywh(hbbA_xywh, hbbB_xywh))
 # # print("area HBB A and C", intersection_area_HBB_xywh(hbbA_xywh, hbbC_xywh))
@@ -67,36 +70,54 @@ obbE = np.array([0, 0.2, 0.1, 0.4, 0.3, 0.3, 0.4, 0.1, 0.2])
 # # # ------------------------------ Jacobian Test ---------------------------------
 # # print("----------------------Jacobian Test--------------------------")
 q = np.array([0.23, 0.91, 0.22, 0.12, 0.42, 0.74]).reshape((-1,1))
-# q_dot, epsilon_A, epsilon_S, J_o_I_r, J_alpha_a_r = r2r_control(obbD, obbE, q, OBB=True)
+p_r_hbb = cxyxy2xyxyxy(hbbD_xyxy)
+p_r_obb = cxyxyxyxy2xyxyxy(obbB)
+
 # print("q_dot", q_dot)
 # print("epsilon_A", epsilon_A)
 # print("epsilon_S", epsilon_S)
 # print("J_o_I_r", J_o_I_r)
 # print("J_alpha_a_r", J_alpha_a_r)
 
-## ===================== J_o_I_r Testing =====================
-# J_o_I_r = (J_o(p_r_box)) @ (J_I(p_r_box)) @ (J_r(q))
-# print("J_o(p_r_box)", J_o(p_r_box))
-# print("J_o(p_r_box).shape", J_o(p_r_box).shape)
-# print("J_I(p_r_box)", J_I(p_r_box))
-# print("J_I(p_r_box).shape", J_I(p_r_box).shape)
+# ## ===================== J_o_I_r Testing =====================
+# print("J_o(p_r_box)", J_o(p_r_obb))
+# print("J_o(p_r_box).shape", J_o(p_r_obb).shape)
+# print("J_I(p_r_box)", J_I(p_r_obb))
+# print("J_I(p_r_box).shape", J_I(p_r_obb).shape)
 # print("J_r(q)", J_r(q))
 # print("J_r(q).shape", J_r(q).shape)
+J_o_I_r = (J_o(p_r_obb)) @ (J_I(p_r_obb)) @ (J_r(q))
 # print("J_o_I_r", J_o_I_r)
-# print("J_o_I_r.shape", J_o_I_r.shape)
+print("J_o_I_r.shape", J_o_I_r.shape)
+J_o_I_r_pinv = np.linalg.pinv(J_o_I_r)
+print("J_o_I_r_pinv", J_o_I_r_pinv)
+print("J_o_I_r_pinv.shape", J_o_I_r_pinv.shape)
+# J_o_I_r_transpose = J_o_I_r.T
+# print("J_o_I_r_transpose", J_o_I_r_transpose)
+# print("J_o_I_r_transpose.shape", J_o_I_r_transpose.shape)
 
 ## ===================== J_olpha_a_r Testing =====================
-p1 = intersection_points_OBB_diy(obbA, obbC)
-print("interp A and C:", p1)
-print("J_alpha(p1)", J_alpha(p1))
-print("J_alpha(p1).shape", J_alpha(p1).shape)
-print("J_a(p1)", J_a(p1))
-print("J_a(p1).shape", J_a(p1).shape)
-print("J_r(q)", J_r(q))
-print("J_r(q).shape", J_r(q).shape)
-J_alpha_a_r = (J_alpha(p1)) @ (J_a(p1)) @ (J_r(q))
-print("J_alpha_a_r", J_alpha_a_r)
+p1 = intersection_points_HBB_xyxy(hbbD_xyxy, hbbF_xyxy)
+# # print("interp D and E:", p1)
+# # print("J_alpha(p1)", J_alpha(p1))
+# # print("J_alpha(p1).shape", J_alpha(p1).shape)
+# # print("J_a(p1)", J_a(p1))
+# # print("J_a(p1).shape", J_a(p1).shape)
+# # print("J_r(q)", J_r(q))
+# # print("J_r(q).shape", J_r(q).shape)
+J_alpha_a_r = ((J_alpha(p1)) @ (J_a(p1)) @ (J_r(q))).reshape(1,6)
 print("J_alpha_a_r.shape", J_alpha_a_r.shape)
+J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
+print("J_alpha_a_r_pinv", J_alpha_a_r_pinv)
+print("J_alpha_a_r_pinv.shape", J_alpha_a_r_pinv.shape)
+
+jacobian = np.concatenate((J_alpha_a_r_pinv, J_o_I_r_pinv), axis=1)
+print("jacobian", jacobian)
+print("jacobian.shape", jacobian.shape)
 
 
-## ======================================= INTEGRATION TEST ============================================
+q_dot, epsilon= r2r_control(obbD, obbE, q, OBB=True)
+print("epsilon", epsilon)
+print("epsilon.shape", epsilon.shape)
+print("q_dot", q_dot)
+print("q_dot.shape", q_dot.shape)

@@ -908,31 +908,33 @@ def J_alpha(intersection_points):
     
     return J_alpha
 
-def J_a(intersection_points, depth=1000):
+def J_a(p, depth=1000):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
 		  p = a list of intersection points with format [[x1,y1], [x2,y2], ... [xn,yn]] with shape (1,2p)
 	 Returns:
-		  J_I (8x6 matrix)
+		  J_I (2px6 matrix)
 	 """
     # Precompute general terms
     f_x = 618.072
     f_y = 618.201
-    len_points = len(intersection_points)
-    p = intersection_points
+    len_points = len(p)
     jacobian = []
     
-    # Define the Jacobian
-    for i in range(len_points):
-        j = [f_x / depth, 0, -p[i][0] / depth, -p[i][0] * p[i][1] / f_x, (f_x * f_x + p[i][0] * p[i][0]) / f_x, -p[i][1]]
-        k = [0, f_y / depth, -p[i][1] / depth, -(f_y * f_y + p[i][1] * p[i][1]) / f_y, p[i][0] * p[i][1] / f_y, p[i][0]]
-        jacobian.append(j)
-        jacobian.append(k)
+    # If p is not empty
+    if not np.array_equal(p, np.array([])):
+        # Define the Jacobian
+        for i in range(len_points):
+            j = [f_x / depth, 0, -p[i][0] / depth, -p[i][0] * p[i][1] / f_x, (f_x * f_x + p[i][0] * p[i][0]) / f_x, -p[i][1]]
+            k = [0, f_y / depth, -p[i][1] / depth, -(f_y * f_y + p[i][1] * p[i][1]) / f_y, p[i][0] * p[i][1] / f_y, p[i][0]]
+            jacobian.append(j)
+            jacobian.append(k)
     
-    # Compute the determinant to check singularity
-    J_a = np.array(jacobian)
-    # determinant = np.linalg.det(J_a)
+        J_a = np.array(jacobian)
+        # determinant = np.linalg.det(J_a) # Compute the determinant to check singularity
+    else:
+        J_a = np.empty((0,6))
     
     return J_a
 
@@ -1239,19 +1241,18 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     # Overall controller
     k = 1
 
-    speed = 1e-02
     actualq = np.array(actual_q).reshape((-1, 1)) # Reshape the actual_q
     
     # Prepare for Gamma Calculation and Area calculation
     if OBB:
-        r_box = cxyxyxyxy2xywhr(reaching_box) # Conversion for OBB to xywhr format for Gamma calculation
-        d_box = cxyxyxyxy2xywhr(desired_box) # Conversion for OBB to xywhr format for Gamma calculation
+        r_box = cxyxyxyxy2xywhr(reaching_box) # Conversion for OBB to xywhr format
+        d_box = cxyxyxyxy2xywhr(desired_box) # Conversion for OBB to xywhr format
         p_r_box = cxyxyxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for OBB reaching box
         area = intersection_area_OBB_diy(reaching_box, desired_box)
         interpoints = intersection_points_OBB_diy(reaching_box, desired_box)
     else:  # HBB
-        r_box = cxyxy2xywhr(reaching_box) # Conversion for HBB to xywhr format for Gamma calculation
-        d_box = cxyxy2xywhr(desired_box) # Conversion for HBB to xywhr format for Gamma calculation
+        r_box = cxyxy2xywhr(reaching_box) # Conversion for HBB to xywhr format
+        d_box = cxyxy2xywhr(desired_box) # Conversion for HBB to xywhr format
         p_r_box = cxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
         area = intersection_area_HBB_xyxy(reaching_box, desired_box)
         interpoints = intersection_points_HBB_xyxy(reaching_box, desired_box)
@@ -1269,36 +1270,39 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     
     # Overlapping State --> Energy Function
     P_A = (k_amin/n) * (max(0, f_amin) ** n) + (k_amax/n) * (max(0, f_amax) ** n)
+    # print("P_A.shape",P_A.shape)
     
     # Epsilon_A
-    P_R_dot = np.array([(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0,0] - d_box[0,0]),
-                        (2 * k_cy / (n ** 2)) * ((max(0, f_cy)) ** (n - 1)) * (r_box[1,0] - d_box[1,0]),
-                        0,
-                        0,
-                        0]) # dimension (5,1)
+    P_R_dot = np.array([[(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0,0] - d_box[0,0])],
+                        [(2 * k_cy / (n ** 2)) * ((max(0, f_cy)) ** (n - 1)) * (r_box[1,0] - d_box[1,0])],
+                        [0],
+                        [0],
+                        [0]]) # dimension (5,1)
     
     # Differentiation of P_A
     P_A_dot = ((-k_amin/(n**2)) * (max(0, f_amin) ** (n-1)) + (k_amax/(n**2)) * (max(0, f_amax) ** (n-1)))
     
     # Epsilon_A
-    epsilon_A = P_R*P_A_dot
+    epsilon_A = [P_R*P_A_dot]
+    print("epsilon_A",epsilon_A)
     
     # Epsilon_S (have not yet with P_S_dot variable)
     epsilon_S = P_A*P_R_dot
+    print("epsilon_S",epsilon_S)
     
     # Compute the Jacobian Matrix J_o @ J_I @ J_r @ q_dot
     J_o_I_r = (J_o(p_r_box)) @ (J_I(p_r_box)) @ (J_r(actualq))
+    J_o_I_r_pinv = np.linalg.pinv(J_o_I_r) # Pseudo Inverse using the Moore-Penrose matrix inversion
     
     # Compute the Jacobian Matrix J_alpha @ J_a @ J_r @ q_dot
-    J_alpha_a_r = (J_alpha(interpoints)) @ (J_a(interpoints)) @ (J_r(actualq))
+    J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a(interpoints)) @ (J_r(actualq))).reshape(1,6)
+    J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
     
-    # Compute the pseudo inverse of the Jacobian matrix using the Moore-Penrose matrix inversion
-    J_reaching_pinv = np.linalg.pinv(J_reaching) # Step 4
-    
-    # Delta_Gamma or Gamma dot
-    Gamma_dot = speed*(d_box - r_box) # Step 1 & 2
+    # Total Jacobian and epsilon
+    jacobian = np.concatenate((J_alpha_a_r_pinv, J_o_I_r_pinv), axis=1)
+    epsilon = np.vstack((epsilon_A, epsilon_S))
     
     # The Controller
-    q_dot = J_reaching_pinv @ Gamma_dot # Step 5. Using np.dot has similar value with using @
+    q_dot = -k *(jacobian @ epsilon)
     
-    return q_dot, epsilon_A, epsilon_S, J_o_I_r, J_alpha_a_r
+    return q_dot, epsilon
