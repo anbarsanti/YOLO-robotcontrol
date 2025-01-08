@@ -138,7 +138,7 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilo
     os.makedirs(new_folder_path, exist_ok=True)
     
     ## =================== TOOL POSITION =====================
-    file_path = f"{new_folder_path}/tool_position.csv"
+    file_path = f"{new_folder_path}/actual_p.csv"
     np.savetxt(file_path, actual_p, delimiter=",")
     
     plt.figure()
@@ -169,7 +169,7 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilo
     plt.savefig(file_path)
     
     ## =================== JOINT POSITION =====================
-    file_path = f"{new_folder_path}/joint_position.csv"
+    file_path = f"{new_folder_path}/aqtual_q.csv"
     np.savetxt(file_path, actual_q, delimiter=",")
 
     plt.figure()

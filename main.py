@@ -35,21 +35,20 @@ area_plot = [0]
 
 ## =========================  UR5E INITIALIZATION ==================================================
 con, state, watchdog, setp = UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename)
-time_plot = [0]
-actual_p = np.array(state.actual_TCP_pose)
-actual_q = np.array(state.actual_q)
-q_dot = np.zeros((6, 1))
 
 # Initialization of Plotting Variable
+time_plot = [0]
+time_start = time.time()
+q_dot = np.zeros((6, 1))
 q_dot_plot = np.zeros((6, 1))
 epsilon_plot = np.zeros((1, 5))
+actual_p = np.array(state.actual_TCP_pose)
+actual_q = np.array(state.actual_q)
 
 ## =========================  UR5E MOVE TO INITIAL POSITION =========================
 con, state, watchdog, setp = UR5e_start(con, state, watchdog, setp)
 
 # ## ======================= TRACKING STARTS ==================================
-# Initialize locked_box, the box that is locked
-# in HBB toy detection, locked_box is the red box with class 1
 
 # Open the camera
 cap = cv2.VideoCapture(0)  # Use 0 for the default camera, or change to a specific camera index if needed
@@ -114,7 +113,7 @@ while cap.isOpened():
 				
 				
 				## =================== SAVE FOR PLOTTING AND ANALYSIS ===================================
-				time_plot.append(time.time())
+				time_plot.append(time.time()-time_start)
 				area_plot.append(area)
 				epsilon_plot = np.vstack((epsilon_plot, epsilon_R))
 				actual_p = np.vstack((actual_p, new_actual_p))
