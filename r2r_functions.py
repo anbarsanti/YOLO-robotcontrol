@@ -1235,16 +1235,16 @@ def J_r(q):
     jacobian[5, 4] = -c234
     jacobian[5, 5] = r33
     
-    # # Revise (still needs to be checked)
-    # jacobian[0, 0] = -jacobian[0, 0]
-    # jacobian[0, 1] = -jacobian[0, 1]
-    # jacobian[0, 2] = -jacobian[0, 2]
-    # jacobian[1, 0] = -jacobian[1, 0]
-    # jacobian[1, 1] = -jacobian[1, 1]
-    # jacobian[1, 2] = -jacobian[0, 2]
-    # jacobian[2, 0] = -jacobian[2, 0]
-    # jacobian[2, 1] = -jacobian[2, 1]
-    # jacobian[2, 2] = -jacobian[0, 2]
+    # Revise (still needs to be checked)
+    jacobian[0, 0] = -jacobian[0, 0]
+    jacobian[0, 1] = -jacobian[0, 1]
+    jacobian[0, 2] = -jacobian[0, 2]
+    jacobian[1, 0] = -jacobian[1, 0]
+    jacobian[1, 1] = -jacobian[1, 1]
+    jacobian[1, 2] = -jacobian[0, 2]
+    jacobian[2, 0] = -jacobian[2, 0]
+    jacobian[2, 1] = -jacobian[2, 1]
+    jacobian[2, 2] = -jacobian[2, 2] # previously jacobian[0, 2]
     
     # Compute the determinant to check singularity
     determinant = np.linalg.det(jacobian)
