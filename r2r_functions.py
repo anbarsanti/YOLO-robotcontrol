@@ -1192,9 +1192,9 @@ def J_r(q):
     r13 = -(c1 * c234 * s5) + (c5 * s1)
     r23 = -(c234 * s1 * s5) - (c1 * c5)
     r33 = - (s234 * s5)
-    px = (r13 * d6) + (c1 * ((s234 * d5) + (c23 * a3) + (c2 * a2))) + (s1 * d4)
+    px = (r13 * d6) + (c1 * ((s234 * d5) + (c23 * a3) + (c2 * a2))) + (s1 * d4) # previously px
     py = (r23 * d6) + (s1 * ((s234 * d5) + (c23 * a3) + (c2 * a2))) - (c1 * d4)
-    pz = (r33 * d6) - (c234 * d5) + (s23 * a3) + (s2 * a2) + d1
+    pz = (r33 * d6) - (c234 * d5) + (s23 * a3) + (s2 * a2) + d1 # previously pz
     
     # Define the Jacobian Matrix
     jacobian[0, 0] = -py
@@ -1237,8 +1237,8 @@ def J_r(q):
     
     # # Revise (still needs to be checked)
     # jacobian[0, 0] = -jacobian[0, 0]
-    jacobian[0, 1] = -jacobian[0, 1]
-    jacobian[0, 2] = -jacobian[0, 2]
+    # jacobian[0, 1] = -jacobian[0, 1]
+    # jacobian[0, 2] = -jacobian[0, 2]
     # jacobian[1, 0] = -jacobian[1, 0]
     # jacobian[1, 1] = -jacobian[1, 1]
     # jacobian[1, 2] = -jacobian[0, 2]
