@@ -199,6 +199,20 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilo
     file_path = os.path.join(new_folder_path, 'actual_q3.png')
     plt.savefig(file_path)
     
+    ## =================== AREA =====================
+    plt.figure()
+    plt.plot(time_plot, area_plot, label="Area")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Area')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'area.png')
+    plt.savefig(file_path)
+    
+    transposed_area_plot = np.array(area_plot).reshape(-1, 1)
+    file_path = f"{new_folder_path}/area.csv"
+    np.savetxt(file_path, transposed_area_plot, delimiter=",")
+
     ## =================== Q_DOT POSITION =====================
     file_path = f"{new_folder_path}/q_dot.csv"
     np.savetxt(file_path, q_dot_plot.T, delimiter=",")
@@ -230,23 +244,12 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilo
     file_path = os.path.join(new_folder_path, 'q3_dot_plot.png')
     plt.savefig(file_path)
     
-    ## =================== AREA =====================
-    plt.figure()
-    plt.plot(time_plot, area_plot, label="Area")
-    plt.legend()
-    plt.grid()
-    plt.ylabel('Area')
-    plt.xlabel('Time [sec]')
-    file_path = os.path.join(new_folder_path, 'area.png')
-    plt.savefig(file_path)
-    
-    transposed_area_plot = np.array(area_plot).reshape(-1,1)
-    file_path = f"{new_folder_path}/area.csv"
-    np.savetxt(file_path, transposed_area_plot, delimiter=",")
-    
     ## =================== EPSILON =====================
+    file_path = f"{new_folder_path}/epsilon.csv"
+    np.savetxt(file_path, epsilon_plot.T, delimiter=",")
+    
     plt.figure()
-    plt.plot(time_plot, epsilon_plot[:,0], label="Epsilon_1")
+    plt.plot(time_plot, epsilon_plot[0], label="Epsilon_1")
     plt.legend()
     plt.grid()
     plt.ylabel('Epsilon_1')
@@ -255,16 +258,49 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilo
     plt.savefig(file_path)
     
     plt.figure()
-    plt.plot(time_plot, epsilon_plot[:,2], label="Epsilon_2")
+    plt.plot(time_plot, epsilon_plot[1], label="Epsilon_2")
     plt.legend()
     plt.grid()
-    plt.ylabel('Epsilon_1')
+    plt.ylabel('Epsilon_2')
     plt.xlabel('Time [sec]')
     file_path = os.path.join(new_folder_path, 'epsilon_2.png')
     plt.savefig(file_path)
+    
+    plt.figure()
+    plt.plot(time_plot, epsilon_plot[2], label="Epsilon_3")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Epsilon_3')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'epsilon_3.png')
+    plt.savefig(file_path)
+    
+    plt.figure()
+    plt.plot(time_plot, epsilon_plot[3], label="Epsilon_4")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Epsilon_4')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'epsilon_4.png')
+    plt.savefig(file_path)
 
-    file_path = f"{new_folder_path}/epsilon.csv"
-    np.savetxt(file_path, epsilon_plot, delimiter=",")
+    plt.figure()
+    plt.plot(time_plot, epsilon_plot[4], label="Epsilon_5")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Epsilon_5')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'epsilon_5.png')
+    plt.savefig(file_path)
+    
+    plt.figure()
+    plt.plot(time_plot, epsilon_plot[5], label="Epsilon_6")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Epsilon_6')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'epsilon_6.png')
+    plt.savefig(file_path)
 
     return plt
 
@@ -404,7 +440,7 @@ def track_from_webcam(model, OBB=True):
     # Release resources
     cap.release()
     cv2.destroyAllWindows()
-
+    return annotated_frame
 
 def track_from_intelrealsense(model, OBB=True):
     '''
@@ -415,6 +451,7 @@ def track_from_intelrealsense(model, OBB=True):
     # Check RealSense Camera Connection
     ctx = rs.context()
     devices = ctx.query_devices()
+    
     if len(devices) == 0:
         print("No device connected")
     else:
@@ -444,7 +481,7 @@ def track_from_intelrealsense(model, OBB=True):
         # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
         # cv2.imshow("Bismillah", color_image)
         
-        # Run YOLOv8 OBB inference on the frame
+        # Run YOLO tracking on the frame
         results = model.track(color_image, stream=True, show=True, persist=True,
                               tracker='bytetrack.yaml')  # Tracking with byteTrack
         
@@ -978,7 +1015,11 @@ def J_o(p):
 		 The jacobian matrix J_o (5x6 matrix)
 	 """
     # Precompute common terms
-    jacobian = np.zeros((5, 6))
+    jacobian = np.array([[1e-09, 1e-09, 1e-09, 1e-09, 1e-09, 1e-09],
+                         [1e-09, 1e-09, 1e-09, 1e-09, 1e-09, 1e-09],
+                         [1e-09, 1e-09, 1e-09, 1e-09, 1e-09, 1e-09],
+                         [1e-09, 1e-09, 1e-09, 1e-09, 1e-09, 1e-09],
+                         [1e-09, 1e-09, 1e-09, 1e-09, 1e-09, 1e-09]])
     x1 = p[0,0]
     y1 = p[1,0]
     x2 = p[2,0]
@@ -995,9 +1036,9 @@ def J_o(p):
     denom2 = delta_x2 ** 2 + delta_y2 ** 2
     sqrt_denom2 = np.sqrt(denom2)
     
-    # Ensure inputs are not zero to avoid division by zero
-    assert denom1 > 0, "Invalid input: delta_x1^2 + delta_y1^2 must be > 0"
-    assert denom2 > 0, "Invalid input: delta_x2^2 + delta_y2^2 must be > 0"
+    # # Ensure inputs are not zero to avoid division by zero
+    # assert denom1 > 0, "Invalid input: delta_x1^2 + delta_y1^2 must be > 0"
+    # assert denom2 > 0, "Invalid input: delta_x2^2 + delta_y2^2 must be > 0"
     
     # Define the jacobian
     jacobian[0, :] = [0, 0, 0, 0, 1, 0]
@@ -1311,11 +1352,9 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     
     # Epsilon_A
     epsilon_A = [P_R*P_A_dot]
-    print("epsilon_A",epsilon_A)
     
     # Epsilon_S (have not yet with P_S_dot variable)
     epsilon_S = P_A*P_R_dot + P_S_dot
-    print("epsilon_S",epsilon_S)
     
     # Compute the Jacobian Matrix J_o @ J_I @ J_r @ q_dot
     J_o_I_r = (J_o(p_r_box)) @ (J_I(p_r_box)) @ (J_r(actualq))
@@ -1324,6 +1363,7 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     # Compute the Jacobian Matrix J_alpha @ J_a @ J_r @ q_dot
     J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a(interpoints)) @ (J_r(actualq))).reshape(1,6)
     J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
+
     
     # Total Jacobian and epsilon
     jacobian = np.concatenate((J_alpha_a_r_pinv, J_o_I_r_pinv), axis=1)
@@ -1331,5 +1371,6 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     
     # The Controller
     q_dot = -k *(jacobian @ epsilon)
+    print("q_dot",q_dot)
     
     return q_dot, epsilon
