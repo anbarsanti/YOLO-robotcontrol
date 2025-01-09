@@ -1224,20 +1224,31 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
 	 Returns:
 		 q_dot, the joint velocity of UR5e robotic arm, with [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector
 	 """
-    # -------------------------- REACHING STATE -----------------------------------
     # Precompute & Predefine some terms
     n = 3
     # Reaching State
-    e_cx = 0.002
-    e_cy = 0.003
-    k_cx = 0.0001
-    k_cy = 0.0001
+    e_cx = 0.02
+    e_cy = 0.03
+    k_cx = 0.001
+    k_cy = 0.001
     P_r = 0.002
     # Overlapping State
     k_amin = 0.002
     k_amax = 0.002
     A_dmin = 0.6 # 60%
     A_dmax = 0.9 # 90%
+    # Scaling State
+    k_wmin = 0.002
+    k_wmax = 0.002
+    k_hmin = 0.002
+    k_hmax = 0.002
+    k_theta = 0.002
+    w_min = 0.6 # 60%
+    w_max = 0.9 # 90%
+    h_min = 0.6 # 60%
+    h_max = 0.9 # 90%
+    e_theta = 0.03
+    
     # Overall controller
     k = 1
 
@@ -1262,8 +1273,15 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     f_cy = abs(r_box[1,0] - d_box[1,0]) ** 2 - e_cy ** 2
     
     # Objective Function for Overlapping State
-    f_amin = A_dmin - area
-    f_amax = area - A_dmax
+    f_amin = A_dmin*area - area
+    f_amax = area - A_dmax*area
+    
+    # Objective Function for Scaling State
+    f_wmax = d_box[2,0] - w_max*d_box[2,0]
+    f_wmin = w_min*d_box[2,0] - d_box[2,0]
+    f_hmax = d_box[3,0] - h_max*d_box[3,0]
+    f_hmin = h_min*d_box[3,0] - d_box[3,0]
+    f_theta = abs(d_box[4,0] - r_box[4,0])**2 - e_theta**2
     
     # Reaching State --> Energy Function
     P_R = (k_cx / n) * (max(0, f_cx) ** n) + (k_cy / n) * (max(0, f_cy) ** n) + P_r
@@ -1272,22 +1290,31 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     P_A = (k_amin/n) * (max(0, f_amin) ** n) + (k_amax/n) * (max(0, f_amax) ** n)
     # print("P_A.shape",P_A.shape)
     
-    # Epsilon_A
+    # Differentiation of P_R without J_o_I_r
     P_R_dot = np.array([[(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0,0] - d_box[0,0])],
                         [(2 * k_cy / (n ** 2)) * ((max(0, f_cy)) ** (n - 1)) * (r_box[1,0] - d_box[1,0])],
                         [0],
                         [0],
                         [0]]) # dimension (5,1)
     
-    # Differentiation of P_A
+    # Differentiation of P_A without J_alpha_a_J_r
     P_A_dot = ((-k_amin/(n**2)) * (max(0, f_amin) ** (n-1)) + (k_amax/(n**2)) * (max(0, f_amax) ** (n-1)))
+    
+    # Differentiation of P_S without J_o_I_r
+    P_S_dot = np.array ([[0],
+                         [0],
+                         [((k_wmax / (n ** 2)) * ((max(0, f_wmax)) ** (n - 1)) -  (k_wmin / (n ** 2)) * ((max(0, f_wmin)) ** (n - 1)))*
+                          ((k_hmax / n) * ((max(0, f_hmax)) ** n) + (k_hmin / n) * ((max(0, f_hmin)) ** n))],
+                         [((k_wmax / n) * ((max(0, f_wmax)) ** n) + (k_wmin / n) * ((max(0, f_wmin)) ** n))*
+                          ((k_hmax / (n ** 2)) * ((max(0, f_hmax)) ** (n - 1)) -  (k_hmin / (n ** 2)) * ((max(0, f_hmin)) ** (n - 1)))],
+                         [(2 * k_theta / (n ** 2)) * ((max(0, f_theta)) ** (n - 1)) * (r_box[4,0] - d_box[4,0])]])
     
     # Epsilon_A
     epsilon_A = [P_R*P_A_dot]
     print("epsilon_A",epsilon_A)
     
     # Epsilon_S (have not yet with P_S_dot variable)
-    epsilon_S = P_A*P_R_dot
+    epsilon_S = P_A*P_R_dot + P_S_dot
     print("epsilon_S",epsilon_S)
     
     # Compute the Jacobian Matrix J_o @ J_I @ J_r @ q_dot
