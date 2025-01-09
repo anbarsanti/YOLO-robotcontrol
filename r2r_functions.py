@@ -1235,16 +1235,16 @@ def J_r(q):
     jacobian[5, 4] = -c234
     jacobian[5, 5] = r33
     
-    # Revise (still needs to be checked)
-    jacobian[0, 0] = -jacobian[0, 0]
+    # # Revise (still needs to be checked)
+    # jacobian[0, 0] = -jacobian[0, 0]
     jacobian[0, 1] = -jacobian[0, 1]
     jacobian[0, 2] = -jacobian[0, 2]
-    jacobian[1, 0] = -jacobian[1, 0]
-    jacobian[1, 1] = -jacobian[1, 1]
-    jacobian[1, 2] = -jacobian[0, 2]
-    jacobian[2, 0] = -jacobian[2, 0]
-    jacobian[2, 1] = -jacobian[2, 1]
-    jacobian[2, 2] = -jacobian[0, 2]
+    # jacobian[1, 0] = -jacobian[1, 0]
+    # jacobian[1, 1] = -jacobian[1, 1]
+    # jacobian[1, 2] = -jacobian[0, 2]
+    # jacobian[2, 0] = -jacobian[2, 0]
+    # jacobian[2, 1] = -jacobian[2, 1]
+    # jacobian[2, 2] = -jacobian[0, 2]
     
     # Compute the determinant to check singularity
     determinant = np.linalg.det(jacobian)
@@ -1268,30 +1268,30 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     # Precompute & Predefine some terms
     n = 3
     # Reaching State
-    e_cx = 0.02
-    e_cy = 0.03
-    k_cx = 0.001
-    k_cy = 0.001
-    P_r = 0.002
+    e_cx = 0.2
+    e_cy = 0.3
+    k_cx = 0.1
+    k_cy = 0.1
+    P_r = 0.1
     # Overlapping State
-    k_amin = 0.002
-    k_amax = 0.002
+    k_amin = 0.2
+    k_amax = 0.2
     A_dmin = 0.6 # 60%
     A_dmax = 0.9 # 90%
     # Scaling State
-    k_wmin = 0.002
-    k_wmax = 0.002
-    k_hmin = 0.002
-    k_hmax = 0.002
-    k_theta = 0.002
+    k_wmin = 0.2
+    k_wmax = 0.2
+    k_hmin = 0.2
+    k_hmax = 0.2
+    k_theta = 0.2
     w_min = 0.6 # 60%
     w_max = 0.9 # 90%
     h_min = 0.6 # 60%
     h_max = 0.9 # 90%
-    e_theta = 0.03
+    e_theta = 0.3
     
     # Overall controller
-    k = 1
+    k = 100000
 
     actualq = np.array(actual_q).reshape((-1, 1)) # Reshape the actual_q
     
