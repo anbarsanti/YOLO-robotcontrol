@@ -6,6 +6,7 @@ by @anbarsanti
 import numpy as np
 import math
 import torch
+from torch.autograd.functional import jacobian
 from matplotlib.path import Path
 import cv2
 from shapely.geometry import Polygon, Point, LineString
@@ -975,6 +976,27 @@ def J_a(p, depth=1000):
     
     return J_a
 
+def J_image(p, Z=1000):
+    """
+	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
+	 Args:
+		  p = a point with format [[x1],[y1]] with shape (2,1), image coordinate
+		  Z = depth
+	 Returns:
+		  J_I (2px6 matrix)
+	 """
+    # Precompute general terms
+    f = 426.795 # focal length in mm
+    u = p[0][0]
+    v = p[1][0]
+
+    J _image = np.array([
+        [-f/Z, 0, u/Z, u*v/f, -(f**2 + u**2)/f, v],
+        [0, -f/Z, v/Z, (f**2 + v**2)/f, -u*v/f, -u]
+    ])
+     
+    return J_image
+
 def J_I(p):
     """
 	 Return the Jacobian matrix that maps 3 points in image space to linear velocity and angular velocity to cartesian space.
@@ -1161,12 +1183,12 @@ def J_r(q):
     # Precompute & Predefine some terms
     pi = 3.1415926535
     jacobian = np.zeros((6, 6))
-    d1 = 0.0892  # 0.1625
-    d4 = 0.1093  # 0.1333
-    d5 = 0.09475  # 0.0997
-    d6 = 0.0825  # 0.0996
+    d1 = 0.0892  # previously 0.1625
+    d4 = 0.1093  # previously 0.1333
+    d5 = 0.09475  # previously 0.0997
+    d6 = 0.0825  # previously 0.0996
     a2 = 0.425
-    a3 = 0.392
+    a3 = 0.3922
     q1 = q[0,0]
     q2 = q[1,0]
     q3 = q[2,0]
