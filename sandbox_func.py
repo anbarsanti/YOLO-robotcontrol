@@ -138,9 +138,9 @@ import numpy as np
 # hbbA_xywh = np.array([1, 0.7, 0.3, 0.4, 0.4]) #xywh format
 # hbbB_xywh = np.array([1, 0.8, 0.2, 0.2, 0.2]) #xywh format
 # hbbC_xywh = np.array([1, 0.35, 0.6, 0.5, 0.4]) #xywh format
-# hbbD_xyxy = np.array([0, 0.2, 0.2, 0.8, 0.8])
-# hbbE_xyxy = np.array([0, 0.3, 0.1, 0.5, 0.9])
-# hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
+hbbD_xyxy = np.array([0, 0.2, 0.2, 0.8, 0.8])
+hbbE_xyxy = np.array([0, 0.3, 0.1, 0.5, 0.9])
+hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
 # #
 # # print("area HBB A and B", intersection_area_HBB_xywh(hbbA_xywh, hbbB_xywh))
 # # print("area HBB A and C", intersection_area_HBB_xywh(hbbA_xywh, hbbC_xywh))
@@ -221,10 +221,10 @@ import numpy as np
 # ## ===================== J_olpha_a_r Testing =====================
 # p1 = intersection_points_HBB_xyxy(hbbD_xyxy, hbbF_xyxy)
 # # # print("interp D and E:", p1)
-# # # print("J_alpha(p1)", J_alpha(p1))
-# # # print("J_alpha(p1).shape", J_alpha(p1).shape)
-# # # print("J_a(p1)", J_a(p1))
-# # # print("J_a(p1).shape", J_a(p1).shape)
+# # # # print("J_alpha(p1)", J_alpha(p1))
+# # # # print("J_alpha(p1).shape", J_alpha(p1).shape)
+# print("J_a_n(p1)", J_a(p1))
+# print("J_a_n(p1).shape", J_a(p1).shape)
 # # # print("J_r(q)", J_r(q))
 # # # print("J_r(q).shape", J_r(q).shape)
 # J_alpha_a_r = ((J_alpha(p1)) @ (J_a(p1)) @ (J_r(q))).reshape(1,6)
@@ -245,15 +245,55 @@ import numpy as np
 # print("q_dot.shape", q_dot.shape)
 #
 ## ========================================= IMAGE JACOBIAN TESTING ==============================================================
-p = ([5],[3])
+p = ([0.5],[0.3])
 # print("J_image(p)", J_image(p))
 # print("J_image(p).shape", J_image(p).shape)
+print("J_a_n(p)", J_image_n(p))
+# print("J_a_n(p).shape", J_image_n(p).shape)
+print("J_image_n(p)", J_image_n(p))
+print(p[0][0])
 print(p[1][0])
+print(p[1][0])
+print(p[1][1])
 
-
-
-
-
+# ## =================== INTELREALSENSE CAMERA INTRINSIC PARAMETERS =========================
+# pipeline = rs.pipeline()
+# config = rs.config()
+# config.enable_stream(rs.stream.depth)
+# config.enable_stream(rs.stream.color)
+# pipeline.start(config)
+#
+# # Get the depth profile and extract intrinsics
+# depth_profile = pipeline.get_active_profile().get_stream(rs.stream.depth)
+# depth_intrinsics = depth_profile.as_video_stream_profile().get_intrinsics()
+#
+# # Get the color profile and extract intrinsics
+# color_profile = pipeline.get_active_profile().get_stream(rs.stream.color)
+# color_intrinsics = color_profile.as_video_stream_profile().get_intrinsics()
+#
+# # Depth intrinsics
+# print("Depth Intrinsics:")
+# print(f"Width: {depth_intrinsics.width}")
+# print(f"Height: {depth_intrinsics.height}")
+# print(f"PPX (Principal Point X): {depth_intrinsics.ppx}")
+# print(f"PPY (Principal Point Y): {depth_intrinsics.ppy}")
+# print(f"FX (Focal Length X): {depth_intrinsics.fx}")
+# print(f"FY (Focal Length Y): {depth_intrinsics.fy}")
+# print(f"Distortion Model: {depth_intrinsics.model}")
+# print(f"Distortion Coefficients: {depth_intrinsics.coeffs}")
+#
+# # Color intrinsics
+# print("\nColor Intrinsics:")
+# print(f"Width: {color_intrinsics.width}")
+# print(f"Height: {color_intrinsics.height}")
+# print(f"PPX (Principal Point X): {color_intrinsics.ppx}")
+# print(f"PPY (Principal Point Y): {color_intrinsics.ppy}")
+# print(f"FX (Focal Length X): {color_intrinsics.fx}")
+# print(f"FY (Focal Length Y): {color_intrinsics.fy}")
+# print(f"Distortion Model: {color_intrinsics.model}")
+# print(f"Distortion Coefficients: {color_intrinsics.coeffs}")
+#
+# pipeline.stop()
 
 
 

@@ -946,17 +946,17 @@ def J_alpha(intersection_points):
     
     return J_alpha
 
-def J_a(p, depth=1000):
+def J_a(p, Z=600):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
-		  p = a list of intersection points with format [[x1,y1], [x2,y2], ... [xn,yn]] with shape (1,2p)
+		  p = a list of intersection points with format [[x1,y1], [x2,y2], ... [xn,yn]] with shape (1,2p) in pixels unit
+		  Z is depth in milimeters
 	 Returns:
 		  J_I (2px6 matrix)
 	 """
     # Precompute general terms
-    f_x = 618.072
-    f_y = 618.201
+    f = 0.618072 # in milimeters --> needs to be checked
     len_points = len(p)
     jacobian = []
     
@@ -964,8 +964,10 @@ def J_a(p, depth=1000):
     if not np.array_equal(p, np.array([])):
         # Define the Jacobian
         for i in range(len_points):
-            j = [f_x / depth, 0, -p[i][0] / depth, -p[i][0] * p[i][1] / f_x, (f_x * f_x + p[i][0] * p[i][0]) / f_x, -p[i][1]]
-            k = [0, f_y / depth, -p[i][1] / depth, -(f_y * f_y + p[i][1] * p[i][1]) / f_y, p[i][0] * p[i][1] / f_y, p[i][0]]
+            u = p[i][0]
+            v = p[i][1]
+            j = [-f/Z, 0, u/Z, (u*v)/f, -(f**2 + u**2)/f, v]
+            k = [0, -f/Z, v/Z, (f**2+ v**2)/f, -(u*v)/f, -u]
             jacobian.append(j)
             jacobian.append(k)
     
@@ -976,26 +978,55 @@ def J_a(p, depth=1000):
     
     return J_a
 
-def J_image(p, Z=1000):
+
+def J_a_n(p, Z=600):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
-		  p = a point with format [[x1],[y1]] with shape (2,1), image coordinate
-		  Z = depth
+		  p = a list of intersection points with format [[x1,y1], [x2,y2], ... [xn,yn]] with shape (1,2p) in normalized unit
+		  Z is depth in milimeters
 	 Returns:
 		  J_I (2px6 matrix)
 	 """
     # Precompute general terms
-    f = 426.795 # focal length in mm
-    u = p[0][0]
-    v = p[1][0]
+    len_points = len(p)
+    jacobian = []
+    
+    # If p is not empty
+    if not np.array_equal(p, np.array([])):
+        # Define the Jacobian
+        for i in range(len_points):
+            x = p[i][0]
+            y = p[i][1]
+            j = [-1 / Z, 0, x / Z, (x * y), -(1 + x ** 2), y]
+            k = [0, -1 / Z, y / Z, (1 + y ** 2), -(x * y), -x]
+            jacobian.append(j)
+            jacobian.append(k)
+        
+        J_a = np.array(jacobian)
+        # determinant = np.linalg.det(J_a) # Compute the determinant to check singularity
+    else:
+        J_a = np.empty((0, 6))
+    
+    return J_a
 
-    J _image = np.array([
-        [-f/Z, 0, u/Z, u*v/f, -(f**2 + u**2)/f, v],
-        [0, -f/Z, v/Z, (f**2 + v**2)/f, -u*v/f, -u]
-    ])
-     
-    return J_image
+def J_image_n(p, Z=600):
+    """
+	 Normalized Image Jacobian
+	 Image Jacobian matrix that maps a point in image space to linear velocity and angular velocity to cartesian space.
+	 The jacobian becomes independent of camera intrinsics parameters.
+	 Args:
+		  p = a point with format [[x1],[y1]] with shape (2,1), *normalized* image coordinate from YOLO detection
+		  Z = depth
+	 Returns:
+		  J_image_n (2x6 matrix)
+	 """
+    # Precompute general terms
+    x = p[0][0]
+    y = p[1][0]
+    J = np.array([[-1 / Z, 0, x / Z, (x * y), -(1 + x ** 2), y],
+                  [0, -1 / Z, y / Z, (1 + y ** 2), -(x * y), -x]])
+    return J
 
 def J_I(p):
     """
