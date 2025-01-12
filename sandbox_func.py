@@ -245,16 +245,17 @@ hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
 # print("q_dot.shape", q_dot.shape)
 #
 ## ========================================= IMAGE JACOBIAN TESTING ==============================================================
-p = ([0.5],[0.3])
+# p = ([[0.5],[0.3]])
+p = [[0.5, 0.3]]
 # print("J_image(p)", J_image(p))
 # print("J_image(p).shape", J_image(p).shape)
 print("J_a_n(p)", J_image_n(p))
 # print("J_a_n(p).shape", J_image_n(p).shape)
 print("J_image_n(p)", J_image_n(p))
-print(p[0][0])
-print(p[1][0])
-print(p[1][0])
-print(p[1][1])
+print("p[0][0]", p[0][0])
+print("p[0][1]", p[0][1])
+print("p[1][0]", p[1][0])
+print("p[1][1]", p[1][1])
 
 # ## =================== INTELREALSENSE CAMERA INTRINSIC PARAMETERS =========================
 # pipeline = rs.pipeline()

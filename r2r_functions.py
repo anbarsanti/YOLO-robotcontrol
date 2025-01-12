@@ -956,7 +956,7 @@ def J_a(p, Z=600):
 		  J_I (2px6 matrix)
 	 """
     # Precompute general terms
-    f = 0.618072 # in milimeters --> needs to be checked
+    f = 1.93 # in milimeters --> needs to be checked
     len_points = len(p)
     jacobian = []
     
