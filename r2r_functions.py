@@ -1233,26 +1233,26 @@ def J_r(q):
 		 Singularity Analysis and Complete Methods to Compute the Inverse Kinematics for a 6-DOF UR/TM-Type Robot
 		 Jessice Villalobos
 	 Args:
-		 q: numpy array of joint angles [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector
+		 q: numpy array of joint angles [q1, q2, q3, q4, q5, q6] in row vector with dimension (6,), unit: radian
 	 Returns:
 		 Jacobian matrix J_r (6x6 matrix), including linear and angular velocity parts
 	 """
     # Precompute & Predefine some terms
     pi = 3.1415926535
     jacobian = np.zeros((6, 6))
-    d1 = 0.089159  # previously 0.1625
-    d4 = 0.10915  # previously 0.1333
-    d5 = 0.09465  # previously 0.0997
-    d6 = 0.0823  # previously 0.0996
-    a2 = 0.425
-    a3 = 0.39225
-    q1 = q[0,0]
-    q2 = q[1,0]
-    q3 = q[2,0]
-    q4 = q[3,0]
-    q5 = q[4,0]
-    q6 = q[5,0]
-    c1 = math.cos(q1)
+    d1 = 89.2  # in milimeters
+    d4 = 109.3  # in milimeters
+    d5 = 94.75  # in milimeters
+    d6 = 82.5  # in milimeters
+    a2 = 425 # in milimeters
+    a3 = 392.0 # in milimeters
+    q1 = q[0]
+    q2 = q[1]
+    q3 = q[2]
+    q4 = q[3]
+    q5 = q[4]
+    q6 = q[5]
+    c1 = math.cos(q1) # radian
     c2 = math.cos(q2)
     c3 = math.cos(q3)
     c4 = math.cos(q4)
@@ -1271,28 +1271,28 @@ def J_r(q):
     r13 = -(c1 * c234 * s5) + (c5 * s1)
     r23 = -(c234 * s1 * s5) - (c1 * c5)
     r33 = - (s234 * s5)
-    px = (r13 * d6) + (c1 * ((s234 * d5) + (c23 * a3) + (c2 * a2))) + (s1 * d4) # previously px
+    px = (r13 * d6) + (c1 * ((s234 * d5) + (c23 * a3) + (c2 * a2))) + (s1 * d4)
     py = (r23 * d6) + (s1 * ((s234 * d5) + (c23 * a3) + (c2 * a2))) - (c1 * d4)
-    pz = (r33 * d6) - (c234 * d5) + (s23 * a3) + (s2 * a2) + d1 # previously pz
+    pz = (r33 * d6) - (c234 * d5) + (s23 * a3) + (s2 * a2) + d1
     
     # Define the Jacobian Matrix
     jacobian[0, 0] = -py
-    jacobian[0, 1] = -c1 * (pz - d1)
-    jacobian[0, 2] = c1 * (s234 * s5 * d6 + (c234 * d5) - (s23 * a3))
-    jacobian[0, 3] = c1 * ((s234 * s5 * d6) + (c234 * d5))
-    jacobian[0, 4] = -d6 * ((s1 * s5) + (c1 * c234 * c5))
-    jacobian[0, 5] = 0
     jacobian[1, 0] = px
-    jacobian[1, 1] = -s1 * (pz - d1)
-    jacobian[1, 2] = s1 * ((s234 * s5 * d6) + (c234 * d5) - (s23 * a3))
-    jacobian[1, 3] = s1 * ((s234 * s5 * d6) + (c234 * d5))
-    jacobian[1, 4] = d6 * ((c1 * s5) - (c234 * c5 * s1))
-    jacobian[1, 5] = 0
     jacobian[2, 0] = 0
+    jacobian[0, 1] = -c1 * (pz - d1)
+    jacobian[1, 1] = -s1 * (pz - d1)
     jacobian[2, 1] = (s1 * py) + (c1 * px)
+    jacobian[0, 2] = c1 * (s234 * s5 * d6 + (c234 * d5) - (s23 * a3))
+    jacobian[1, 2] = s1 * ((s234 * s5 * d6) + (c234 * d5) - (s23 * a3))
     jacobian[2, 2] = -(c234 * s5 * d6) + (s234 * d5) + (c23 * a3)
+    jacobian[0, 3] = c1 * ((s234 * s5 * d6) + (c234 * d5))
+    jacobian[1, 3] = s1 * ((s234 * s5 * d6) + (c234 * d5))
     jacobian[2, 3] = -(c234 * s5 * d6) + (s234 * d5)
+    jacobian[0, 4] = -d6 * ((s1 * s5) + (c1 * c234 * c5))
+    jacobian[1, 4] = d6 * ((c1 * s5) - (c234 * c5 * s1))
     jacobian[2, 4] = -c5 * s234 * d6
+    jacobian[0, 5] = 0
+    jacobian[1, 5] = 0
     jacobian[2, 5] = 0
     
     jacobian[3, 0] = 0
@@ -1314,19 +1314,8 @@ def J_r(q):
     jacobian[5, 4] = -c234
     jacobian[5, 5] = r33
     
-    # Revise (still needs to be checked)
-    jacobian[0, 0] = -jacobian[0, 0]
-    jacobian[0, 1] = -jacobian[0, 1]
-    jacobian[0, 2] = -jacobian[0, 2]
-    jacobian[1, 0] = -jacobian[1, 0]
-    jacobian[1, 1] = -jacobian[1, 1]
-    jacobian[1, 2] = -jacobian[0, 2]
-    jacobian[2, 0] = -jacobian[2, 0]
-    jacobian[2, 1] = -jacobian[2, 1]
-    jacobian[2, 2] = -jacobian[2, 2] # previously jacobian[0, 2]
-    
-    # Compute the determinant to check singularity
-    determinant = np.linalg.det(jacobian)
+    # # Compute the determinant to check singularity
+    # determinant = np.linalg.det(jacobian)
     
     # Return the Jacobian Matrix
     return jacobian
