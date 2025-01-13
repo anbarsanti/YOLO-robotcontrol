@@ -978,7 +978,6 @@ def J_a(p, Z=600):
     
     return J_a
 
-
 def J_a_n(p, Z=600):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
@@ -1214,12 +1213,12 @@ def J_r(q):
     # Precompute & Predefine some terms
     pi = 3.1415926535
     jacobian = np.zeros((6, 6))
-    d1 = 0.0892  # previously 0.1625
-    d4 = 0.1093  # previously 0.1333
-    d5 = 0.09475  # previously 0.0997
-    d6 = 0.0825  # previously 0.0996
+    d1 = 0.089159  # previously 0.1625
+    d4 = 0.10915  # previously 0.1333
+    d5 = 0.09465  # previously 0.0997
+    d6 = 0.0823  # previously 0.0996
     a2 = 0.425
-    a3 = 0.3922
+    a3 = 0.39225
     q1 = q[0,0]
     q2 = q[1,0]
     q3 = q[2,0]
