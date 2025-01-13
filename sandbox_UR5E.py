@@ -35,35 +35,29 @@ desired_value = [-0.2, -0.5, 0.2, 0.7, 0.3, -0.1]*5
 
 ## =========================  UR5E INITIALIZATION ==================================================
 con, state, watchdog, setp = UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename)
+
+# Initialization of Plotting Variable
+area_plot = [0]
 time_plot = [0]
+time_start = time.time()
+q_dot = np.zeros((6, 1))
+q_dot_plot = np.empty((6, 1))
+epsilon = np.empty((6, 1))
+epsilon_plot = np.empty((6, 1))
 actual_p = np.array(state.actual_TCP_pose)
 actual_q = np.array(state.actual_q)
-q_dot = np.zeros((6,1))
 
 ## =========================  UR5E MOVE TO INITIAL POSITION =========================
 con, state, watchdog, setp = UR5e_start(con, state, watchdog, setp)
 
-# ## ======================= IMAGE JACOBIAN ==================================
-x0 = ([[0.5],[0.3]])
-x1 = ([[0.5],[0.9]])
-x2 = ([[0.8],[0.7]])
-x3 = ([[0.8],[0.3]])
-x4 = ([[0.7],[0.1]])
-x5 = ([[0.5],[0.1]])
-x6 = ([[0.2],[0.1]])
-x7 = ([[0.2],[0.3]])
-x8 = ([[0.2],[0.7]])
-c = [[0.5], [0.3]]
-delta_x = np.subtract(x1, x0)
-print("delta_x", delta_x)
-print("J_image_n", J_image_n(c))
-J_pinv = np.linalg.pinv(J_image_n(c))
-print("J_pinv", J_pinv)
-p_dot = -J_pinv @ delta_x
-print("p_dot", p_dot)
+# ## ======================= UR5E JACOBIAN TEST ==================================
+p_dot0 = ([0, 0, 0, 0, 0, 0])
+p_dot1 = ([100, 0, 0, 0, 0, 0])
+delta_p = np.subtract(p_dot1, p_dot0)
+q_dot = np.linalg.pinv(J_r(p_dot0)) @ delta_p
+print("q_dot", q_dot)
 
 # ## ======================= UR5E STARTS  ==================================
-
 
 while True:
 	# Send the q_dot to UR5e
@@ -72,6 +66,15 @@ while True:
 	state = con.receive()
 	new_actual_p = np.array(state.actual_TCP_pose)
 	new_actual_q = np.array(state.actual_q)
+	print("new_actual_p", new_actual_p)
+	
+	## =================== SAVE FOR PLOTTING AND ANALYSIS ===================================
+	time_plot.append(time.time() - time_start)
+	area_plot.append(area)
+	epsilon_plot = np.append(epsilon_plot, epsilon, axis=1)
+	actual_p = np.vstack((actual_p, new_actual_p))
+	actual_q = np.vstack((actual_q, new_actual_q))
+	q_dot_plot = np.append(q_dot_plot, q_dot, axis=1)
 				
 # Release resources
 cap.release()
@@ -83,4 +86,4 @@ con.send_pause()
 con.disconnect()
 
 ## =========================  FINAL PLOTTING ==================================================
-# final_plotting(time_plot, actual_p, actual_q)
+final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilon_plot)

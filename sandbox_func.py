@@ -244,7 +244,7 @@ hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
 # print("q_dot", q_dot)
 # print("q_dot.shape", q_dot.shape)
 #
-## ========================================= IMAGE AND UR5E JACOBIAN TESTING ==============================================================
+## ========================================= IMAGE JACOBIAN TESTING ==============================================================
 x0 = [[0.5],[0.3]]
 x1 = [[0.5],[0.9]]
 x2 = [[0.8],[0.7]]
@@ -257,10 +257,14 @@ x8 = [[0.2],[0.7]]
 c = x0
 delta_x = np.subtract(x8, x0)
 
-p_dot1 = - R_rc @ (np.linalg.pinv(J_image_n(c)) @ delta_x) # ---> this is the correct way
+p_dot = - R_rc @ (np.linalg.pinv(J_image_n(c)) @ delta_x) # ---> this is the correct way
 
-print("p_dot1 \n", p_dot1)
-
+## ===================================== UR5E JACOBIAN TESTING ========================================================
+p_dot0 = ([0, 0, 0, 0, 0, 0])
+p_dot1 = ([0.2, 0, 0, 0, 0, 0])
+delta_p = np.subtract(p_dot1, p_dot0)
+q_dot = np.linalg.pinv(J_r(p_dot0)) @ delta_p
+print("q_dot", q_dot)
 
 
 # ## =================== INTELREALSENSE CAMERA INTRINSIC PARAMETERS =========================
