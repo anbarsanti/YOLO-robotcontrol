@@ -39,7 +39,6 @@ def list_to_setp(setp, list):
         setp.__dict__["input_double_register_%i" % i] = list[i]
     return setp
 
-
 def UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename):
     '''
 	 Robot communication initialization
@@ -923,6 +922,16 @@ def intersection_area_HBB_xyxy(boxA, boxB):
     return area
 
 ## ============================== JACOBIAN MATRICES ====================================
+
+# Transformation matrix from camera coordinate sytem to robot coordinate system
+R_cr = np.array([[0, -1, 0, 0, 0, 0],
+					  [0, 0, -1, 0, 0, 0],
+					  [1, 0, 0, 0, 0, 0],
+					  [0, 0, 0, 0, -1, 0],
+					  [0, 0, 0, 0, 0, -1],
+					  [0, 0, 0, 1, 0, 0]])
+
+R_rc = R_cr.T
 
 def J_alpha(intersection_points):
     """
