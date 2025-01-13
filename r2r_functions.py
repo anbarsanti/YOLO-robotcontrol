@@ -946,7 +946,7 @@ def J_alpha(intersection_points):
     
     return J_alpha
 
-def J_a(p, Z=600):
+def J_a(p, Z=500):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
@@ -978,7 +978,7 @@ def J_a(p, Z=600):
     
     return J_a
 
-def J_a_n(p, Z=600):
+def J_a_n(p, Z=500):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
@@ -1009,7 +1009,25 @@ def J_a_n(p, Z=600):
     
     return J_a
 
-def J_image_n(p, Z=600):
+def J_image_n_linear(p, Z=1):
+    """
+	 Normalized Image Jacobian
+	 Image Jacobian matrix that maps a point in image space to linear velocity and angular velocity to cartesian space.
+	 The jacobian becomes independent of camera intrinsics parameters.
+	 Args:
+		  p = a point with format [[x1],[y1]] with shape (2,1), *normalized* image coordinate from YOLO detection
+		  Z = depth
+	 Returns:
+		  J_image_n (2x6 matrix)
+	 """
+    # Precompute general terms
+    x = p[0][0]
+    y = p[1][0]
+    J = np.array([[-1 / Z, 0, x / Z],
+                  [0, -1 / Z, y / Z]])
+    return J
+
+def J_image_n(p, Z=1):
     """
 	 Normalized Image Jacobian
 	 Image Jacobian matrix that maps a point in image space to linear velocity and angular velocity to cartesian space.

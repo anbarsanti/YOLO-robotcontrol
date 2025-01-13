@@ -244,29 +244,24 @@ hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
 # print("q_dot", q_dot)
 # print("q_dot.shape", q_dot.shape)
 #
-## ========================================= IMAGE JACOBIAN & UR5E TESTING ==============================================================
-p0 = ([[0.5],[0.3]])
-p1 = ([[0.5],[0.9]])
-p2 = ([[0.8],[0.7]])
-p3 = ([[0.8],[0.3]])
-p4 = ([[0.7],[0.1]])
-p5 = ([[0.5],[0.1]])
-p6 = ([[0.2],[0.1]])
-p7 = ([[0.2],[0.3]])
-p8 = ([[0.2],[0.7]])
-c = [[0.5], [0.5]]
-v = [[0.1], [0.0], [0.0], [0.0], [0.0], [0.0]]
-
-
-
-# print("J_image(p)", J_image(p))
-# print("J_image(p).shape", J_image(p).shape)
-# print("J_a_n(p)", J_image_n(p))
-# print("J_a_n(p).shape", J_image_n(p).shape)
-
-
-print("result", result)
-
+## ========================================= IMAGE JACOBIAN TESTING ==============================================================
+x0 = [[0.5],[0.3]]
+x1 = [[0.5],[0.9]]
+x2 = [[0.8],[0.7]]
+x3 = [[0.8],[0.3]]
+x4 = [[0.7],[0.1]]
+x5 = [[0.5],[0.1]]
+x6 = [[0.2],[0.1]]
+x7 = [[0.2],[0.3]]
+x8 = [[0.2],[0.7]]
+c = x0
+delta_x = np.subtract(x1, x0)
+print("delta_x \n", delta_x)
+print("J_image_n \n", J_image_n_linear(c))
+J_pinv = np.linalg.pinv(J_image_n_linear(c))
+print("J_pinv \n", J_pinv)
+p_dot = J_pinv @ delta_x
+print("p_dot \n", p_dot)
 
 # ## =================== INTELREALSENSE CAMERA INTRINSIC PARAMETERS =========================
 # pipeline = rs.pipeline()

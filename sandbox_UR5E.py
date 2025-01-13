@@ -22,7 +22,7 @@ import numpy as np
 
 ## ========================= INITIALIZATION OF ROBOT COMMUNICATION  =========================
 # ROBOT_HOST = "10.149.230.168" # in robotics lab
-ROBOT_HOST = "192.168.18.14"  # virtual machine in from linux host
+ROBOT_HOST = "192.168.18.3"  # virtual machine in from linux host
 ROBOT_PORT = 30004
 config_filename = "control_loop_configuration.xml"
 FREQUENCY = 1000 # send data in 500 Hz instead of default 125Hz
@@ -44,17 +44,23 @@ q_dot = np.zeros((6,1))
 con, state, watchdog, setp = UR5e_start(con, state, watchdog, setp)
 
 # ## ======================= IMAGE JACOBIAN ==================================
-p0 = ([[0.5],[0.3]])
-p1 = ([[0.5],[0.9]])
-p2 = ([[0.8],[0.7]])
-p3 = ([[0.8],[0.3]])
-p4 = ([[0.7],[0.1]])
-p5 = ([[0.5],[0.1]])
-p6 = ([[0.2],[0.1]])
-p7 = ([[0.2],[0.3]])
-p8 = ([[0.2],[0.7]])
-c = [[0.5], [0.5]]
-J = image_jacobian = J_image_n(c) @ actual_q
+x0 = ([[0.5],[0.3]])
+x1 = ([[0.5],[0.9]])
+x2 = ([[0.8],[0.7]])
+x3 = ([[0.8],[0.3]])
+x4 = ([[0.7],[0.1]])
+x5 = ([[0.5],[0.1]])
+x6 = ([[0.2],[0.1]])
+x7 = ([[0.2],[0.3]])
+x8 = ([[0.2],[0.7]])
+c = [[0.5], [0.3]]
+delta_x = np.subtract(x1, x0)
+print("delta_x", delta_x)
+print("J_image_n", J_image_n(c))
+J_pinv = np.linalg.pinv(J_image_n(c))
+print("J_pinv", J_pinv)
+p_dot = -J_pinv @ delta_x
+print("p_dot", p_dot)
 
 # ## ======================= UR5E STARTS  ==================================
 
