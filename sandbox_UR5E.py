@@ -51,11 +51,21 @@ actual_q = np.array(state.actual_q)
 ## =========================  UR5E MOVE TO INITIAL POSITION =========================
 con, state, watchdog, setp = UR5e_start(con, state, watchdog, setp)
 
-# ## ======================= UR5E JACOBIAN TEST ==================================
-p_dot0 = ([0, 0, 0, 0, 0, 0])
-p_dot1 = ([0, 0, 0, 1000, 0, 0])
-delta_p = np.subtract(p_dot1, p_dot0)
-q_dot = np.linalg.pinv(J_r(p_dot0)) @ delta_p
+# ## ======================= IMAGE and UR5E JACOBIAN TEST ==================================
+x0 = [[0.5],[0.3]]
+x1 = [[0.5],[0.9]]
+x2 = [[0.8],[0.7]]
+x3 = [[0.8],[0.3]]
+x4 = [[0.7],[0.1]]
+x5 = [[0.5],[0.1]]
+x6 = [[0.2],[0.1]]
+x7 = [[0.2],[0.3]]
+x8 = [[0.2],[0.7]]
+c = x0
+k = 1000
+delta_x = np.subtract(x1, x0)
+p_dot = - R_rc @ (np.linalg.pinv(J_image_n(c)) @ delta_x)
+q_dot = k * np.linalg.pinv(J_r(actual_p)) @ p_dot
 print("q_dot", q_dot)
 
 # ## ======================= UR5E STARTS  ==================================
@@ -67,7 +77,7 @@ while time.time() - time_start < 60:
 	state = con.receive()
 	new_actual_p = np.array(state.actual_TCP_pose)
 	new_actual_q = np.array(state.actual_q)
-	print("new_actual_p", new_actual_p)
+	print("new_actual_q", new_actual_q)
 	
 	## =================== SAVE FOR PLOTTING AND ANALYSIS ===================================
 	time_plot.append(time.time() - time_start)
