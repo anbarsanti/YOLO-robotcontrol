@@ -30,13 +30,11 @@ FREQUENCY = 1000  # send data in 500 Hz instead of default 125Hz
 start_pose = [0.4, -0.6, 0, 0, 0, 0]
 desired_value = [-0.2, -0.5, 0.2, 0.7, 0.3, -0.1] * 5
 
-# Initialization of Plotting Variable
-area_plot = [0]
-
 ## =========================  UR5E INITIALIZATION ==================================================
 con, state, watchdog, setp = UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename)
 
 # Initialization of Plotting Variable
+area_plot = [0]
 time_plot = [0]
 time_start = time.time()
 q_dot = np.zeros((6, 1))
@@ -136,8 +134,8 @@ while True:
 			list_to_setp(setp, q_dot)
 			con.send(setp)
 			state = con.receive()
-			new_actual_p = np.array(state.actual_TCP_pose)
-			new_actual_q = np.array(state.actual_q)
+			actual_p = np.array(state.actual_TCP_pose)
+			actual_q = np.array(state.actual_q)
 			
 			## ==================== CONTROLLER =========================================
 			q_dot, epsilon = r2r_control(desired_box, reaching_box, new_actual_q, OBB=OBB)

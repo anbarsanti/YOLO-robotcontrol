@@ -255,21 +255,17 @@ x6 = [[0.2],[0.1]]
 x7 = [[0.2],[0.3]]
 x8 = [[0.2],[0.7]]
 
-x_desired = [[0.443739652633667], [0.2704053819179535]]
-x_actual = [[0.43475424570473375], [0.26016065408422007]]
+x_desired = x7 		# in image space
+x_actual = x0	# in tools space
+# x_actual_imagespace = R_wr3 @ (np.vstack((x_actual, 0)))		# in image space
+# delta_x = np.subtract(x_desired, x_actual_imagespace[0:2])
 delta_x = np.subtract(x_desired, x_actual)
+print("delta_x", delta_x)
 
-x_actual3D = np.vstack((x_actual, 0))
-print("x_actual3D", x_actual3D)
-x_actual_imagespace = R_cr3 @ x_actual3D
-print("x_actual_imagespace", x_actual_imagespace)
-
-p_dot = - R_rc6 @ np.linalg.pinv(J_image_n(x_actual)) @ delta_x # ---> this is the correct way
+p_dot = - R_rw6 @ np.linalg.pinv(J_image_n(x_actual)) @ delta_x # ---> this is the correct way
 print("p_dot", p_dot)
-q_dot = - 10 * np.linalg.pinv(J_r(p_dot)) @ p_dot
-print("q_dot", q_dot)
-
-
+# q_dot = - 10 * np.linalg.pinv(J_r(p_dot)) @ p_dot
+# print("q_dot", q_dot)
 
 ## ===================================== UR5E JACOBIAN TESTING ========================================================
 # p_dot0 = ([0, 0, 0, 0, 0, 0])

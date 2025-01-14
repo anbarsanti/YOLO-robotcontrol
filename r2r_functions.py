@@ -33,7 +33,6 @@ def setp_to_list(setp):
         setp_list.append(setp.__dict__["input_double_register_%i" % i])
     return setp_list
 
-
 def list_to_setp(setp, list):
     for i in range(0, 6):
         setp.__dict__["input_double_register_%i" % i] = list[i][0]
@@ -86,7 +85,6 @@ def UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename):
     
     return con, state, watchdog, setp
 
-
 def UR5e_start(con, state, watchdog, setp):
     '''
     Execute MoveJ to the start joint position (check polyscope for the init joint)
@@ -102,7 +100,6 @@ def UR5e_start(con, state, watchdog, setp):
             break
     
     return con, state, watchdog, setp
-
 
 def UR5e_loopmove(con, state, watchdog, setp, desired_value, time_plot,
               actual_p, actual_q):
@@ -373,7 +370,6 @@ def track_from_video(VIDEO_PATH, model, OBB = True):
     cap.release()
     out.release()
     cv2.destroyAllWindows()
-
 
 def track_from_webcam(model, OBB=True):
     '''
@@ -923,20 +919,37 @@ def intersection_area_HBB_xyxy(boxA, boxB):
 
 ## ============================== JACOBIAN MATRICES ====================================
 
-# Transformation matrix from camera coordinate sytem to robot coordinate system
-R_cr3 = np.array([[0, -1, 0],
+# Transformation matrix from intelrealsense coordinate sytem to robot coordinate system
+R_ir3 = np.array([[0, -1, 0],
 					  [0, 0, -1],
 					  [1, 0, 0]])
 
-R_cr6 = np.array([[0, -1, 0, 0, 0, 0],
+R_ir6 = np.array([[0, -1, 0, 0, 0, 0],
 					  [0, 0, -1, 0, 0, 0],
 					  [1, 0, 0, 0, 0, 0],
 					  [0, 0, 0, 0, -1, 0],
 					  [0, 0, 0, 0, 0, -1],
 					  [0, 0, 0, 1, 0, 0]])
 
-R_rc3 = R_cr3.T
-R_rc6 = R_cr6.T
+R_ri3 = R_ir3.T
+R_ri6 = R_ir6.T
+
+# Transformation matrix from webcam coordinate sytem to robot coordinate system
+# For Simulation Purpose
+R_rw3 = np.array([[0, 0, -1],
+					  [1, 0, 0],
+					  [0, -1, 0]])
+
+R_rw6 = np.array([[0, 0, -1, 0, 0, 0],
+					  [1, 0, 0, 0, 0, 0],
+					  [0, -1, 0, 0, 0, 0],
+					  [0, 0, 0, 0, 0, -1],
+					  [0, 0, 0, 1, 0, 0],
+					  [0, 0, 0, 0, -1, 0]])
+
+R_wr3 = R_rw3.T
+R_wr6 = R_rw6.T
+
 
 def J_alpha(intersection_points):
     """
@@ -960,7 +973,7 @@ def J_alpha(intersection_points):
     
     return J_alpha
 
-def J_a(p, Z=500):
+def J_a(p, Z=0.5):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
@@ -992,7 +1005,7 @@ def J_a(p, Z=500):
     
     return J_a
 
-def J_a_n(p, Z=500):
+def J_a_n(p, Z=0.5):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
@@ -1023,7 +1036,7 @@ def J_a_n(p, Z=500):
     
     return J_a
 
-def J_image_n_linear(p, Z=1):
+def J_image_n_linear(p, Z=0.5):
     """
 	 Normalized Image Jacobian
 	 Image Jacobian matrix that maps a point in image space to linear velocity and angular velocity to cartesian space.
@@ -1041,7 +1054,7 @@ def J_image_n_linear(p, Z=1):
                   [0, -1 / Z, y / Z]])
     return J
 
-def J_image_n(p, Z=1):
+def J_image_n(p, Z=0.5):
     """
 	 Normalized Image Jacobian
 	 Image Jacobian matrix that maps a point in image space to linear velocity and angular velocity to cartesian space.
@@ -1319,6 +1332,10 @@ def J_r(q):
     jacobian[5, 3] = 0
     jacobian[5, 4] = -c234
     jacobian[5, 5] = r33
+    
+    jacobian[0, 0]=-jacobian[0, 0];jacobian[0, 1]=-jacobian[0, 1];jacobian[0, 2]=-jacobian[0, 2];
+    jacobian[1, 0]=-jacobian[1, 0];jacobian[1, 1]=-jacobian[1, 1];jacobian[1, 2]=-jacobian[0, 2];
+    jacobian[2, 0]=-jacobian[2, 0];jacobian[2, 1]=-jacobian[2, 1];jacobian[2, 2]=-jacobian[2, 2];
     
     # # Compute the determinant to check singularity
     # determinant = np.linalg.det(jacobian)
