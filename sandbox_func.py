@@ -259,12 +259,28 @@ delta_x = np.subtract(x8, x0)
 
 p_dot = - R_rc @ (np.linalg.pinv(J_image_n(c)) @ delta_x) # ---> this is the correct way
 
-## ===================================== UR5E JACOBIAN TESTING ========================================================
-p_dot0 = ([0, 0, 0, 0, 0, 0])
-p_dot1 = ([0.2, 0, 0, 0, 0, 0])
-delta_p = np.subtract(p_dot1, p_dot0)
-q_dot = np.linalg.pinv(J_r(p_dot0)) @ delta_p
+c = x0
+k = 1000
+delta_x = np.subtract(x1, x0)
+p_dot = - R_rc @ (np.linalg.pinv(J_image_n(c)) @ delta_x)
+print("p_dot", p_dot)
+q_dot = k * np.linalg.pinv(J_r(p_dot)) @ p_dot
 print("q_dot", q_dot)
+
+new_actual_p = np.array([[0.1], [0.2], [0.3], [0.4], [0.5], [0.6]])
+x_act = new_actual_p[0][0]
+y_act = new_actual_p[1][0]
+print("x_act", x_act)
+print("y_act", y_act)
+
+
+## ===================================== UR5E JACOBIAN TESTING ========================================================
+# p_dot0 = ([0, 0, 0, 0, 0, 0])
+# p_dot1 = ([0.2, 0, 0, 0, 0, 0])
+# delta_p = np.subtract(p_dot1, p_dot0)
+# q_dot = np.linalg.pinv(J_r(p_dot0)) @ delta_p
+# print("q_dot", q_dot)
+
 
 
 # ## =================== INTELREALSENSE CAMERA INTRINSIC PARAMETERS =========================
