@@ -924,14 +924,19 @@ def intersection_area_HBB_xyxy(boxA, boxB):
 ## ============================== JACOBIAN MATRICES ====================================
 
 # Transformation matrix from camera coordinate sytem to robot coordinate system
-R_cr = np.array([[0, -1, 0, 0, 0, 0],
+R_cr3 = np.array([[0, -1, 0],
+					  [0, 0, -1],
+					  [1, 0, 0]])
+
+R_cr6 = np.array([[0, -1, 0, 0, 0, 0],
 					  [0, 0, -1, 0, 0, 0],
 					  [1, 0, 0, 0, 0, 0],
 					  [0, 0, 0, 0, -1, 0],
 					  [0, 0, 0, 0, 0, -1],
 					  [0, 0, 0, 1, 0, 0]])
 
-R_rc = R_cr.T
+R_rc3 = R_cr3.T
+R_rc6 = R_cr6.T
 
 def J_alpha(intersection_points):
     """

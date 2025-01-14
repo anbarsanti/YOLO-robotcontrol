@@ -261,10 +261,10 @@ delta_x = np.subtract(x_desired, x_actual)
 
 x_actual3D = np.vstack((x_actual, 0))
 print("x_actual3D", x_actual3D)
-x_actual_imagespace = R_cr @ x_actual3D
+x_actual_imagespace = R_cr3 @ x_actual3D
 print("x_actual_imagespace", x_actual_imagespace)
 
-p_dot = - R_rc @ np.linalg.pinv(J_image_n(x_actual)) @ delta_x # ---> this is the correct way
+p_dot = - R_rc6 @ np.linalg.pinv(J_image_n(x_actual)) @ delta_x # ---> this is the correct way
 print("p_dot", p_dot)
 q_dot = - 10 * np.linalg.pinv(J_r(p_dot)) @ p_dot
 print("q_dot", q_dot)
