@@ -36,7 +36,7 @@ def setp_to_list(setp):
 
 def list_to_setp(setp, list):
     for i in range(0, 6):
-        setp.__dict__["input_double_register_%i" % i] = list[i]
+        setp.__dict__["input_double_register_%i" % i] = list[i][0]
     return setp
 
 def UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename):
@@ -924,14 +924,19 @@ def intersection_area_HBB_xyxy(boxA, boxB):
 ## ============================== JACOBIAN MATRICES ====================================
 
 # Transformation matrix from camera coordinate sytem to robot coordinate system
-R_cr = np.array([[0, -1, 0, 0, 0, 0],
+R_cr3 = np.array([[0, -1, 0],
+					  [0, 0, -1],
+					  [1, 0, 0]])
+
+R_cr6 = np.array([[0, -1, 0, 0, 0, 0],
 					  [0, 0, -1, 0, 0, 0],
 					  [1, 0, 0, 0, 0, 0],
 					  [0, 0, 0, 0, -1, 0],
 					  [0, 0, 0, 0, 0, -1],
 					  [0, 0, 0, 1, 0, 0]])
 
-R_rc = R_cr.T
+R_rc3 = R_cr3.T
+R_rc6 = R_cr6.T
 
 def J_alpha(intersection_points):
     """
@@ -960,7 +965,7 @@ def J_a(p, Z=500):
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
 		  p = a list of intersection points with format [[x1,y1], [x2,y2], ... [xn,yn]] with shape (1,2p) in pixels unit
-		  Z is depth in milimeters
+		  Z is depth in meters
 	 Returns:
 		  J_I (2px6 matrix)
 	 """
@@ -992,7 +997,7 @@ def J_a_n(p, Z=500):
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
 		  p = a list of intersection points with format [[x1,y1], [x2,y2], ... [xn,yn]] with shape (1,2p) in normalized unit
-		  Z is depth in milimeters
+		  Z is depth in meters
 	 Returns:
 		  J_I (2px6 matrix)
 	 """
@@ -1025,7 +1030,7 @@ def J_image_n_linear(p, Z=1):
 	 The jacobian becomes independent of camera intrinsics parameters.
 	 Args:
 		  p = a point with format [[x1],[y1]] with shape (2,1), *normalized* image coordinate from YOLO detection
-		  Z = depth
+		  Z = depth in meters
 	 Returns:
 		  J_image_n (2x6 matrix)
 	 """
@@ -1043,7 +1048,8 @@ def J_image_n(p, Z=1):
 	 The jacobian becomes independent of camera intrinsics parameters.
 	 Args:
 		  p = a point with format [[x1],[y1]] with shape (2,1), *normalized* image coordinate from YOLO detection
-		  Z = depth
+		  p is the actual point
+		  Z = depth in meters
 	 Returns:
 		  J_image_n (2x6 matrix)
 	 """
@@ -1233,7 +1239,7 @@ def J_r(q):
 		 Singularity Analysis and Complete Methods to Compute the Inverse Kinematics for a 6-DOF UR/TM-Type Robot
 		 Jessice Villalobos
 	 Args:
-		 q: numpy array of joint angles [q1, q2, q3, q4, q5, q6] in row vector with dimension (6,), unit: radian
+		 q: numpy array of *current joint angles* [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector with dimension (6,1), unit: radian
 	 Returns:
 		 Jacobian matrix J_r (6x6 matrix), including linear and angular velocity parts
 	 """
@@ -1246,12 +1252,12 @@ def J_r(q):
     d6 = 82.5  # in milimeters
     a2 = 425 # in milimeters
     a3 = 392.0 # in milimeters
-    q1 = q[0]
-    q2 = q[1]
-    q3 = q[2]
-    q4 = q[3]
-    q5 = q[4]
-    q6 = q[5]
+    q1 = q[0][0]
+    q2 = q[1][0]
+    q3 = q[2][0]
+    q4 = q[3][0]
+    q5 = q[4][0]
+    q6 = q[5][0]
     c1 = math.cos(q1) # radian
     c2 = math.cos(q2)
     c3 = math.cos(q3)
