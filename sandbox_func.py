@@ -254,24 +254,21 @@ x5 = [[0.5],[0.1]]
 x6 = [[0.2],[0.1]]
 x7 = [[0.2],[0.3]]
 x8 = [[0.2],[0.7]]
-c = x0
-delta_x = np.subtract(x8, x0)
 
-p_dot = - R_rc @ (np.linalg.pinv(J_image_n(c)) @ delta_x) # ---> this is the correct way
+x_desired = [[0.443739652633667], [0.2704053819179535]]
+x_actual = [[0.43475424570473375], [0.26016065408422007]]
+delta_x = np.subtract(x_desired, x_actual)
 
-c = x0
-k = 1000
-delta_x = np.subtract(x1, x0)
-p_dot = - R_rc @ (np.linalg.pinv(J_image_n(c)) @ delta_x)
+x_actual3D = np.vstack((x_actual, 0))
+print("x_actual3D", x_actual3D)
+x_actual_imagespace = R_cr @ x_actual3D
+print("x_actual_imagespace", x_actual_imagespace)
+
+p_dot = - R_rc @ np.linalg.pinv(J_image_n(x_actual)) @ delta_x # ---> this is the correct way
 print("p_dot", p_dot)
-q_dot = k * np.linalg.pinv(J_r(p_dot)) @ p_dot
+q_dot = - 10 * np.linalg.pinv(J_r(p_dot)) @ p_dot
 print("q_dot", q_dot)
 
-new_actual_p = np.array([[0.1], [0.2], [0.3], [0.4], [0.5], [0.6]])
-x_act = new_actual_p[0][0]
-y_act = new_actual_p[1][0]
-print("x_act", x_act)
-print("y_act", y_act)
 
 
 ## ===================================== UR5E JACOBIAN TESTING ========================================================

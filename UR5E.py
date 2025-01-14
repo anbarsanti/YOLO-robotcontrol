@@ -48,28 +48,11 @@ epsilon = np.zeros((6, 1))
 epsilon_plot = np.zeros((6, 1))
 actual_p = np.array(state.actual_TCP_pose)
 new_actual_p = np.array([[0.1], [0.1], [0.1], [0.1], [0.1], [0.1]])
+new_actual_q = np.array([[0.1], [0.1], [0.1], [0.1], [0.1], [0.1]])
 actual_q = np.array(state.actual_q)
 
 ## =========================  UR5E MOVE TO INITIAL POSITION =========================
 con, state, watchdog, setp = UR5e_start(con, state, watchdog, setp)
-
-# ## ======================= IMAGE and UR5E JACOBIAN TEST ==================================
-x0 = [[0.5],[0.3]]
-x1 = [[0.5],[0.9]]
-x2 = [[0.8],[0.7]]
-x3 = [[0.8],[0.3]]
-x4 = [[0.7],[0.1]]
-x5 = [[0.5],[0.1]]
-x6 = [[0.2],[0.1]]
-x7 = [[0.2],[0.3]]
-x8 = [[0.2],[0.7]]
-c = x0
-k = 1000
-delta_x = np.subtract(x1, x0)
-p_dot = - R_rc @ (np.linalg.pinv(J_image_n(c)) @ delta_x)
-print("p_dot", p_dot)
-# q_dot = k * np.linalg.pinv(J_r(actual_p)) @ p_dot
-# print("q_dot", q_dot)
 
 # ## ======================= TRACKING STARTS ==================================
 
@@ -113,17 +96,18 @@ while cap.isOpened():
 					# Capture the detected toy's box = desired box
 					if cls_i == 0.0:  # First toy's box detected
 						area = 0
-						x_desired = [[np.array(xyxyn[i].tolist())[0]],[np.array(xyxyn[i].tolist())[1]]]
+						x_desired = [[np.array(xyxyn[i].tolist())[0]],[np.array(xyxyn[i].tolist())[1]]] # in image space
 						new_actual_p = new_actual_p.reshape(6, 1)
-						x_actual = [[new_actual_p[0][0]],[new_actual_p[1][0]]]
+						x_actual = [[new_actual_p[0][0]],[new_actual_p[1][0]]] # in task space
 						delta_x = np.subtract(x_desired, x_actual)
 						print("x_desired", x_desired)
 						print("x_actual", x_actual)
+						
 
-						p_dot = R_rc @ (np.linalg.pinv(J_image_n(c)) @ delta_x)
+						p_dot = - R_rc @ np.linalg.pinv(J_image_n(x_actual)) @ delta_x
 						print("p_dot", p_dot)
-						new_actual_p = new_actual_p.reshape(6,1)
-						q_dot = np.array(10 * np.linalg.pinv(J_r(new_actual_p)) @ p_dot)
+						new_actual_q = new_actual_q.reshape(6,1)
+						q_dot = np.array(10 * np.linalg.pinv(J_r(new_actual_q)) @ p_dot)
 						print("q_dot", q_dot)
 				
 				## ==================== UR5E =========================================

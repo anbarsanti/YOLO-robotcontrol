@@ -1043,6 +1043,7 @@ def J_image_n(p, Z=1):
 	 The jacobian becomes independent of camera intrinsics parameters.
 	 Args:
 		  p = a point with format [[x1],[y1]] with shape (2,1), *normalized* image coordinate from YOLO detection
+		  p is the actual point
 		  Z = depth in meters
 	 Returns:
 		  J_image_n (2x6 matrix)
@@ -1233,7 +1234,7 @@ def J_r(q):
 		 Singularity Analysis and Complete Methods to Compute the Inverse Kinematics for a 6-DOF UR/TM-Type Robot
 		 Jessice Villalobos
 	 Args:
-		 q: numpy array of joint angles [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector with dimension (6,1), unit: radian
+		 q: numpy array of *current joint angles* [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector with dimension (6,1), unit: radian
 	 Returns:
 		 Jacobian matrix J_r (6x6 matrix), including linear and angular velocity parts
 	 """
