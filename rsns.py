@@ -26,9 +26,6 @@ ROBOT_HOST = "10.149.230.168" # in robotics lab
 ROBOT_PORT = 30004
 config_filename = "control_loop_configuration.xml"
 FREQUENCY = 1000  # send data in 500 Hz instead of default 125Hz
-# Setpoints to move the robot 
-start_pose = [0.4, -0.6, 0, 0, 0, 0]
-desired_value = [-0.2, -0.5, 0.2, 0.7, 0.3, -0.1] * 5
 
 ## =========================  UR5E INITIALIZATION ==================================================
 con, state, watchdog, setp = UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename)

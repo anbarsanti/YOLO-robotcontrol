@@ -1,0 +1,11 @@
+path: ../dataset_HBB_toy/
+
+
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 2
+names:
+  0: box
+  1: toy

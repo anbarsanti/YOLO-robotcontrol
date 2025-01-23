@@ -22,8 +22,8 @@ else: # Initialization for HBB case
 	reaching_box = [0, 0, 0, 0, 0]
 
 ## ========================= INITIALIZATION OF ROBOT COMMUNICATION  =========================
-# ROBOT_HOST = "10.149.230.168" # in robotics lab
-ROBOT_HOST = "192.168.18.13"  # virtual machine in from linux host
+ROBOT_HOST = "10.149.230.168" # in robotics lab
+# ROBOT_HOST = "192.168.18.13"  # virtual machine in from linux host
 ROBOT_PORT = 30004
 config_filename = "control_loop_configuration.xml"
 FREQUENCY = 1000 # send data in 500 Hz instead of default 125Hz
@@ -126,8 +126,8 @@ while cap.isOpened():
 				time_plot.append(time.time() - time_start)
 				area_plot.append(area)
 				epsilon_plot = np.append(epsilon_plot, epsilon, axis=1)
-				actual_p_plot = np.vstack((actual_p, actual_p))
-				actual_q_plot = np.vstack((actual_q, actual_q))
+				actual_p_plot = np.vstack((actual_p_plot, actual_p))
+				actual_q_plot = np.vstack((actual_q_plot, actual_q))
 				q_dot_plot = np.append(q_dot_plot, q_dot, axis=1)
 			
 			# Display the annotated frame
