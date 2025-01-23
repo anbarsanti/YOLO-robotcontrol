@@ -124,7 +124,7 @@ def UR5e_loopmove(con, state, watchdog, setp, desired_value, time_plot,
     
     return con, state, watchdog, setp, time_plot, actual_p, actual_q
 
-def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilon_plot):
+def final_plotting (time_plot, actual_p_plot, actual_q_plot, q_dot_plot, area_plot, epsilon_plot):
     # Generate a unique folder
     folder_name = f"plot_{time.strftime('%Y%m%d_%H%M')}"
     
@@ -136,10 +136,10 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilo
     
     ## =================== TOOL POSITION =====================
     file_path = f"{new_folder_path}/actual_p.csv"
-    np.savetxt(file_path, actual_p, delimiter=",")
+    np.savetxt(file_path, actual_p_plot, delimiter=",")
     
     plt.figure()
-    plt.plot(time_plot, actual_p[:, 0], label="Actual Tool Position in x[m]")
+    plt.plot(time_plot, actual_p_plot[:, 0], label="Actual Tool Position in x[m]")
     plt.legend()
     plt.grid()
     plt.ylabel('Tool Position in x[m]')
@@ -148,7 +148,7 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilo
     plt.savefig(file_path)
     
     plt.figure()
-    plt.plot(time_plot, actual_p[:, 1], label="Actual Tool Position in y[m]")
+    plt.plot(time_plot, actual_p_plot[:, 1], label="Actual Tool Position in y[m]")
     plt.legend()
     plt.grid()
     plt.ylabel('Tool Position in y[m]')
@@ -157,7 +157,7 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilo
     plt.savefig(file_path)
     
     plt.figure()
-    plt.plot(time_plot, actual_p[:, 2], label="Actual Tool Position in z[m]")
+    plt.plot(time_plot, actual_p_plot[:, 2], label="Actual Tool Position in z[m]")
     plt.legend()
     plt.grid()
     plt.ylabel('Tool Position in z[m]')
@@ -167,10 +167,10 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilo
     
     ## =================== JOINT POSITION =====================
     file_path = f"{new_folder_path}/aqtual_q.csv"
-    np.savetxt(file_path, actual_q, delimiter=",")
+    np.savetxt(file_path, actual_q_plot, delimiter=",")
 
     plt.figure()
-    plt.plot(time_plot, actual_q[:, 0], label="Actual Joint Position in 1st Joint")
+    plt.plot(time_plot, actual_q_plot[:, 0], label="Actual Joint Position in 1st Joint")
     plt.legend()
     plt.grid()
     plt.ylabel('Joint Position in x')
@@ -179,7 +179,7 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilo
     plt.savefig(file_path)
     
     plt.figure()
-    plt.plot(time_plot, actual_q[:, 1], label="Actual Joint Position in 2nd Joint")
+    plt.plot(time_plot, actual_q_plot[:, 1], label="Actual Joint Position in 2nd Joint")
     plt.legend()
     plt.grid()
     plt.ylabel('Joint Position in y')
@@ -188,7 +188,7 @@ def final_plotting (time_plot, actual_p, actual_q, q_dot_plot, area_plot, epsilo
     plt.savefig(file_path)
     
     plt.figure()
-    plt.plot(time_plot, actual_q[:, 2], label="Actual Joint Position in 3rd Joint")
+    plt.plot(time_plot, actual_q_plot[:, 2], label="Actual Joint Position in 3rd Joint")
     plt.legend()
     plt.grid()
     plt.ylabel('Joint Position in z')
@@ -1385,32 +1385,7 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
 	 """
     # Precompute & Predefine some terms
     n = 3
-    # Reaching State
-    e_cx = 0.2
-    e_cy = 0.3
-    k_cx = 0.1
-    k_cy = 0.1
-    P_r = 0.1
-    # Overlapping State
-    k_amin = 0.2
-    k_amax = 0.2
-    A_dmin = 0.6 # 60%
-    A_dmax = 0.9 # 90%
-    # Scaling State
-    k_wmin = 0.2
-    k_wmax = 0.2
-    k_hmin = 0.2
-    k_hmax = 0.2
-    k_theta = 0.2
-    w_min = 0.6 # 60%
-    w_max = 0.9 # 90%
-    h_min = 0.6 # 60%
-    h_max = 0.9 # 90%
-    e_theta = 0.3
-    
-    # Overall controller
-    k = 10000000
-
+    k = 25
     actualq = np.array(actual_q).reshape((-1, 1)) # Reshape the actual_q
     
     # Prepare for Gamma Calculation and Area calculation
@@ -1425,31 +1400,20 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
         d_box = cxyxy2xywhr(desired_box) # Conversion for HBB to xywhr format
         p_r_box = cxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
         area = intersection_area_HBB_xyxy(reaching_box, desired_box)
-        print("area:", area)
         interpoints = intersection_points_HBB_xyxy(reaching_box, desired_box)
     
-    # Objective Function for Reaching State
+    ## ============================ REACHING STATE ===============================
+    # Precompute & Predefine some terms
+    e_cx = 0.05
+    e_cy = 0.05
+    k_cx = 50
+    k_cy = 50
+    P_r = 0.1
     f_cx = abs(r_box[0,0] - d_box[0,0]) ** 2 - e_cx ** 2
     f_cy = abs(r_box[1,0] - d_box[1,0]) ** 2 - e_cy ** 2
     
-    # Objective Function for Overlapping State
-    f_amin = A_dmin*area - area
-    f_amax = area - A_dmax*area
-    
-    # Objective Function for Scaling State
-    f_wmax = d_box[2,0] - w_max*d_box[2,0]
-    f_wmin = w_min*d_box[2,0] - d_box[2,0]
-    f_hmax = d_box[3,0] - h_max*d_box[3,0]
-    f_hmin = h_min*d_box[3,0] - d_box[3,0]
-    f_theta = abs(d_box[4,0] - r_box[4,0])**2 - e_theta**2
-    
     # Reaching State --> Energy Function
     P_R = (k_cx / n) * (max(0, f_cx) ** n) + (k_cy / n) * (max(0, f_cy) ** n) + P_r
-    print("P_R", P_R)
-    
-    # Overlapping State --> Energy Function
-    P_A = (k_amin/n) * (max(0, f_amin) ** n) + (k_amax/n) * (max(0, f_amax) ** n)
-    print("P_A",P_A)
     
     # Differentiation of P_R without J_o_I_r
     P_R_dot = np.array([[(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0,0] - d_box[0,0])],
@@ -1457,11 +1421,43 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
                         [0],
                         [0],
                         [0]]) # dimension (5,1)
-    print("P_R_dot", P_R_dot)
+    # print("P_R_dot", P_R_dot)
+    
+    # ============================ OVERLAPPING STATE ===============================
+    # Precompute & Predefine some terms
+    k_amin = 1
+    k_amax = 1
+    A_dmin = 0.6 # 60%
+    A_dmax = 0.9 # 90%
+    f_amin = A_dmin - area
+    f_amax = area - A_dmax
+    print("area", area)
+    
+    # Overlapping State --> Energy Function
+    P_A = (k_amin / n) * (max(0, f_amin) ** n) + (k_amax / n) * (max(0, f_amax) ** n)
+    # print("P_A",P_A)
     
     # Differentiation of P_A without J_alpha_a_J_r
-    P_A_dot = ((-k_amin/(n**2)) * (max(0, f_amin) ** (n-1)) + (k_amax/(n**2)) * (max(0, f_amax) ** (n-1)))
-    print("P_A_dot", P_A_dot)
+    P_A_dot = ((-k_amin / (n ** 2)) * (max(0, f_amin) ** (n - 1)) + (k_amax / (n ** 2)) * (max(0, f_amax) ** (n - 1)))
+    # print("P_A_dot", P_A_dot)
+
+    # ============================ SCALING STATE ===============================
+    # k_wmin = 0.2
+    # k_wmax = 0.2
+    # k_hmin = 0.2
+    # k_hmax = 0.2
+    # k_theta = 0.2
+    # w_min = 0.6 # 60%
+    # w_max = 0.9 # 90%
+    # h_min = 0.6 # 60%
+    # h_max = 0.9 # 90%
+    # e_theta = 0.3
+    # # Objective Function for Scaling State
+    # f_wmax = d_box[2,0] - w_max*d_box[2,0]
+    # f_wmin = w_min*d_box[2,0] - d_box[2,0]
+    # f_hmax = d_box[3,0] - h_max*d_box[3,0]
+    # f_hmin = h_min*d_box[3,0] - d_box[3,0]
+    # f_theta = abs(d_box[4,0] - r_box[4,0])**2 - e_theta**2
     
     # Differentiation of P_S without J_o_I_r
     # P_S_dot = np.array ([[0],
@@ -1471,24 +1467,25 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     #                      [((k_wmax / n) * ((max(0, f_wmax)) ** n) + (k_wmin / n) * ((max(0, f_wmin)) ** n))*
     #                       ((k_hmax / (n ** 2)) * ((max(0, f_hmax)) ** (n - 1)) -  (k_hmin / (n ** 2)) * ((max(0, f_hmin)) ** (n - 1)))],
     #                      [(2 * k_theta / (n ** 2)) * ((max(0, f_theta)) ** (n - 1)) * (r_box[4,0] - d_box[4,0])]])
-    #
+    
+    
     # Epsilon_A
     epsilon_A = [P_R*P_A_dot]
-    print("epsilon_A:", epsilon_A)
+    # print("epsilon_A:", epsilon_A)
     
     # Epsilon_S (have not yet with P_S_dot variable)
     epsilon_S = P_A*P_R_dot # + P_S_dot
-    print("epsilon_S:", epsilon_S)
+    # print("epsilon_S:", epsilon_S)
     
     # Compute the Jacobian Matrix J_o @ J_I @ J_r @ q_dot
     J_o_I_r = (J_o(p_r_box)) @ (J_I_n(p_r_box)) @ R_ir6 @ (J_r(actualq))
     J_o_I_r_pinv = np.linalg.pinv(J_o_I_r) # Pseudo Inverse using the Moore-Penrose matrix inversion
-    print("J_o_I_r_pinv:", J_o_I_r_pinv)
+    # print("J_o_I_r_pinv", J_o_I_r_pinv)
     
     # Compute the Jacobian Matrix J_alpha @ J_a @ J_r @ q_dot
     J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints)) @ R_ir6 @ (J_r(actualq))).reshape(1,6)
-    J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
-    print("J_alpha_a_r_pinv:", J_alpha_a_r_pinv)
+    J_alpha_a_r_pinv = - np.linalg.pinv(J_alpha_a_r)
+    # print("J_alpha_a_r_pinv", J_alpha_a_r_pinv)
     
     # Total Jacobian and epsilon
     jacobian = np.concatenate((J_alpha_a_r_pinv, J_o_I_r_pinv), axis=1)
