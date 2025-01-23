@@ -973,7 +973,7 @@ def J_alpha(intersection_points):
     
     return J_alpha
 
-def J_a(p, Z=0.5):
+def J_a(p, Z=0.3):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
@@ -1005,7 +1005,7 @@ def J_a(p, Z=0.5):
     
     return J_a
 
-def J_a_n(p, Z=0.5):
+def J_a_n(p, Z=0.3):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
@@ -1036,7 +1036,7 @@ def J_a_n(p, Z=0.5):
     
     return J_a
 
-def J_image_n_linear(p, Z=0.5):
+def J_image_n_linear(p, Z=0.3):
     """
 	 Normalized Image Jacobian
 	 Image Jacobian matrix that maps a point in image space to linear velocity and angular velocity to cartesian space.
@@ -1054,7 +1054,7 @@ def J_image_n_linear(p, Z=0.5):
                   [0, -1 / Z, y / Z]])
     return J
 
-def J_image_n(p, Z=0.5):
+def J_image_n(p, Z=0.3):
     """
 	 Normalized Image Jacobian
 	 Image Jacobian matrix that maps a point in image space to linear velocity and angular velocity to cartesian space.
@@ -1100,6 +1100,33 @@ def J_I(p):
         [-f_x / depth, 0, x2 / depth, x2 * y2 / f_x, -(f_x * f_x + x2 * x2) / f_x, y2],
         [0, -f_y / depth, y2 / depth, (f_y * f_y + y2 * y2) / f_y, -x2 * y2 / f_y, -x2],
     ]
+    return np.array(image_jacobian)
+
+
+def J_I_n(p, Z=0.3):
+    """
+	 Return the Jacobian matrix that maps 3 points in image space to linear velocity and angular velocity to cartesian space.
+	 Args:
+		  image feature points [x1, y1, x2, y2, x3, y3].T in a column vector format
+		  Z = depth in meters
+	 Returns:
+		  J_I (6x6 matrix)
+	 """
+    # Precompute general terms
+    xc = p[0, 0]
+    yc = p[1, 0]
+    x1 = p[2, 0]
+    y1 = p[3, 0]
+    x2 = p[4, 0]
+    y2 = p[5, 0]
+    
+    image_jacobian = [
+        [-1 / Z, 0, xc / Z, (xc * yc), -(1 + xc ** 2), yc],
+        [0, -1 / Z, yc / Z, (1 + yc ** 2), -(xc * yc), -xc],
+        [-1 / Z, 0, x1 / Z, (x1 * y1), -(1 + x1 ** 2), y1],
+        [0, -1 / Z, y1 / Z, (1 + y1 ** 2), -(x1 * y1), -x1],
+        [-1 / Z, 0, x2 / Z, (x2 * y2), -(1 + x2 ** 2), y2],
+        [0, -1 / Z, y2 / Z, (1 + y2 ** 2), -(x2 * y2), -x2]]
     return np.array(image_jacobian)
 
 def J_o(p):
@@ -1257,14 +1284,13 @@ def J_r(q):
 		 Jacobian matrix J_r (6x6 matrix), including linear and angular velocity parts
 	 """
     # Precompute & Predefine some terms
-    pi = 3.1415926535
     jacobian = np.zeros((6, 6))
-    d1 = 89.2  # in milimeters
-    d4 = 109.3  # in milimeters
-    d5 = 94.75  # in milimeters
-    d6 = 82.5  # in milimeters
-    a2 = 425 # in milimeters
-    a3 = 392.0 # in milimeters
+    d1 = 0.1625  # in meters
+    d4 = 0.1333  # in meters
+    d5 = 0.0997  # in meters
+    d6 = 0.0996  # in meters
+    a2 = -0.425 # in meters
+    a3 = -0.3922 # in meters
     q1 = q[0][0]
     q2 = q[1][0]
     q3 = q[2][0]
@@ -1295,15 +1321,15 @@ def J_r(q):
     pz = (r33 * d6) - (c234 * d5) + (s23 * a3) + (s2 * a2) + d1
     
     # Define the Jacobian Matrix
-    jacobian[0, 0] = -py
-    jacobian[1, 0] = px
-    jacobian[2, 0] = 0
-    jacobian[0, 1] = -c1 * (pz - d1)
-    jacobian[1, 1] = -s1 * (pz - d1)
-    jacobian[2, 1] = (s1 * py) + (c1 * px)
-    jacobian[0, 2] = c1 * (s234 * s5 * d6 + (c234 * d5) - (s23 * a3))
-    jacobian[1, 2] = s1 * ((s234 * s5 * d6) + (c234 * d5) - (s23 * a3))
-    jacobian[2, 2] = -(c234 * s5 * d6) + (s234 * d5) + (c23 * a3)
+    jacobian[0, 0] = -py #
+    jacobian[1, 0] = px #
+    jacobian[2, 0] = 0 #
+    jacobian[0, 1] = -c1 * (pz - d1) #
+    jacobian[1, 1] = -s1 * (pz - d1) #
+    jacobian[2, 1] = (s1 * py) + (c1 * px) #
+    jacobian[0, 2] = c1 * (s234 * s5 * d6 + (c234 * d5) - (s23 * a3)) #
+    jacobian[1, 2] = s1 * ((s234 * s5 * d6) + (c234 * d5) - (s23 * a3)) #
+    jacobian[2, 2] = -(c234 * s5 * d6) + (s234 * d5) + (c23 * a3) #
     jacobian[0, 3] = c1 * ((s234 * s5 * d6) + (c234 * d5))
     jacobian[1, 3] = s1 * ((s234 * s5 * d6) + (c234 * d5))
     jacobian[2, 3] = -(c234 * s5 * d6) + (s234 * d5)
@@ -1333,9 +1359,10 @@ def J_r(q):
     jacobian[5, 4] = -c234
     jacobian[5, 5] = r33
     
-    jacobian[0, 0]=-jacobian[0, 0];jacobian[0, 1]=-jacobian[0, 1];jacobian[0, 2]=-jacobian[0, 2];
-    jacobian[1, 0]=-jacobian[1, 0];jacobian[1, 1]=-jacobian[1, 1];jacobian[1, 2]=-jacobian[0, 2];
-    jacobian[2, 0]=-jacobian[2, 0];jacobian[2, 1]=-jacobian[2, 1];jacobian[2, 2]=-jacobian[2, 2];
+    # Sitan's adjustment --> I no longer need it
+    # jacobian[0, 0]=-jacobian[0, 0];jacobian[0, 1]=-jacobian[0, 1];jacobian[0, 2]=-jacobian[0, 2];
+    # jacobian[1, 0]=-jacobian[1, 0];jacobian[1, 1]=-jacobian[1, 1];jacobian[1, 2]=-jacobian[1, 2];
+    # jacobian[2, 0]=-jacobian[2, 0];jacobian[2, 1]=-jacobian[2, 1];jacobian[2, 2]=-jacobian[2, 2];
     
     # # Compute the determinant to check singularity
     # determinant = np.linalg.det(jacobian)
@@ -1382,7 +1409,7 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     e_theta = 0.3
     
     # Overall controller
-    k = 100000
+    k = 10000000
 
     actualq = np.array(actual_q).reshape((-1, 1)) # Reshape the actual_q
     
@@ -1398,6 +1425,7 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
         d_box = cxyxy2xywhr(desired_box) # Conversion for HBB to xywhr format
         p_r_box = cxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
         area = intersection_area_HBB_xyxy(reaching_box, desired_box)
+        print("area:", area)
         interpoints = intersection_points_HBB_xyxy(reaching_box, desired_box)
     
     # Objective Function for Reaching State
@@ -1417,10 +1445,11 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     
     # Reaching State --> Energy Function
     P_R = (k_cx / n) * (max(0, f_cx) ** n) + (k_cy / n) * (max(0, f_cy) ** n) + P_r
+    print("P_R", P_R)
     
     # Overlapping State --> Energy Function
     P_A = (k_amin/n) * (max(0, f_amin) ** n) + (k_amax/n) * (max(0, f_amax) ** n)
-    # print("P_A.shape",P_A.shape)
+    print("P_A",P_A)
     
     # Differentiation of P_R without J_o_I_r
     P_R_dot = np.array([[(2 * k_cx / (n ** 2)) * ((max(0, f_cx)) ** (n - 1)) * (r_box[0,0] - d_box[0,0])],
@@ -1428,40 +1457,47 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
                         [0],
                         [0],
                         [0]]) # dimension (5,1)
+    print("P_R_dot", P_R_dot)
     
     # Differentiation of P_A without J_alpha_a_J_r
     P_A_dot = ((-k_amin/(n**2)) * (max(0, f_amin) ** (n-1)) + (k_amax/(n**2)) * (max(0, f_amax) ** (n-1)))
+    print("P_A_dot", P_A_dot)
     
     # Differentiation of P_S without J_o_I_r
-    P_S_dot = np.array ([[0],
-                         [0],
-                         [((k_wmax / (n ** 2)) * ((max(0, f_wmax)) ** (n - 1)) -  (k_wmin / (n ** 2)) * ((max(0, f_wmin)) ** (n - 1)))*
-                          ((k_hmax / n) * ((max(0, f_hmax)) ** n) + (k_hmin / n) * ((max(0, f_hmin)) ** n))],
-                         [((k_wmax / n) * ((max(0, f_wmax)) ** n) + (k_wmin / n) * ((max(0, f_wmin)) ** n))*
-                          ((k_hmax / (n ** 2)) * ((max(0, f_hmax)) ** (n - 1)) -  (k_hmin / (n ** 2)) * ((max(0, f_hmin)) ** (n - 1)))],
-                         [(2 * k_theta / (n ** 2)) * ((max(0, f_theta)) ** (n - 1)) * (r_box[4,0] - d_box[4,0])]])
-    
+    # P_S_dot = np.array ([[0],
+    #                      [0],
+    #                      [((k_wmax / (n ** 2)) * ((max(0, f_wmax)) ** (n - 1)) -  (k_wmin / (n ** 2)) * ((max(0, f_wmin)) ** (n - 1)))*
+    #                       ((k_hmax / n) * ((max(0, f_hmax)) ** n) + (k_hmin / n) * ((max(0, f_hmin)) ** n))],
+    #                      [((k_wmax / n) * ((max(0, f_wmax)) ** n) + (k_wmin / n) * ((max(0, f_wmin)) ** n))*
+    #                       ((k_hmax / (n ** 2)) * ((max(0, f_hmax)) ** (n - 1)) -  (k_hmin / (n ** 2)) * ((max(0, f_hmin)) ** (n - 1)))],
+    #                      [(2 * k_theta / (n ** 2)) * ((max(0, f_theta)) ** (n - 1)) * (r_box[4,0] - d_box[4,0])]])
+    #
     # Epsilon_A
     epsilon_A = [P_R*P_A_dot]
+    print("epsilon_A:", epsilon_A)
     
     # Epsilon_S (have not yet with P_S_dot variable)
-    epsilon_S = P_A*P_R_dot + P_S_dot
+    epsilon_S = P_A*P_R_dot # + P_S_dot
+    print("epsilon_S:", epsilon_S)
     
     # Compute the Jacobian Matrix J_o @ J_I @ J_r @ q_dot
-    J_o_I_r = (J_o(p_r_box)) @ (J_I(p_r_box)) @ (J_r(actualq))
+    J_o_I_r = (J_o(p_r_box)) @ (J_I_n(p_r_box)) @ R_ir6 @ (J_r(actualq))
     J_o_I_r_pinv = np.linalg.pinv(J_o_I_r) # Pseudo Inverse using the Moore-Penrose matrix inversion
+    print("J_o_I_r_pinv:", J_o_I_r_pinv)
     
     # Compute the Jacobian Matrix J_alpha @ J_a @ J_r @ q_dot
-    J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a(interpoints)) @ (J_r(actualq))).reshape(1,6)
+    J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints)) @ R_ir6 @ (J_r(actualq))).reshape(1,6)
     J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
-
+    print("J_alpha_a_r_pinv:", J_alpha_a_r_pinv)
     
     # Total Jacobian and epsilon
     jacobian = np.concatenate((J_alpha_a_r_pinv, J_o_I_r_pinv), axis=1)
+    print("jacobian:", jacobian)
     epsilon = np.vstack((epsilon_A, epsilon_S))
+    print("epsilon:", epsilon)
     
     # The Controller
     q_dot = -k *(jacobian @ epsilon)
     print("q_dot",q_dot)
     
-    return q_dot, epsilon
+    return q_dot, epsilon, area

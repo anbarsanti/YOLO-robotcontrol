@@ -18,12 +18,12 @@ import torch
 
 ## ========================= INITIALIZATION OF ROBOT COMMUNICATION  =========================
 ROBOT_HOST = "10.149.230.168" # in robotics lab
-# ROBOT_HOST = "192.168.18.13"  # virtual machine in from linux host
+# ROBOT_HOST = "192.168.35.21"  # virtual machine in from linux host
 ROBOT_PORT = 30004
 config_filename = "control_loop_configuration.xml"
 FREQUENCY = 250 # send data in 500 Hz instead of default 125Hz
 time_start = time.time()
-trajectory_time = 10
+trajectory_time = 20
 
 ## =========================  UR5E INITIALIZATION ==================================================
 con, state, watchdog, setp = UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename)
@@ -56,18 +56,20 @@ x6 = [[0.2],[0.1]]
 x7 = [[0.2],[0.3]]
 x8 = [[0.2],[0.7]]
 
-x_desired = x7 		# in image space
+x_desired = x8 		# in image space
 x_actual = x0	# in tools space
-# x_actual_imagespace = R_wr3 @ (np.vstack((x_actual, 0)))		# in image space
+# x_actual_imagespace = R_ir3 @ (np.vstack((x_actual, 0)))		# in image space
 # delta_x = np.subtract(x_desired, x_actual_imagespace[0:2])
 delta_x = np.subtract(x_desired, x_actual)
 print("delta_x", delta_x)
 
 p_dot = - R_ri6 @ np.linalg.pinv(J_image_n(x_actual)) @ delta_x # ---> this is the correct way
 p_dot[3][0] = 0; p_dot[4][0] = 0; p_dot[5][0] = 0
+# p_dot = [[0],[0],[-0.1],[0],[0],[0]]
 print("p_dot", p_dot)
+
 new_actual_q = new_actual_q.reshape(6,1)
-q_dot = 50* np.linalg.pinv(J_r(new_actual_q)) @ p_dot
+q_dot = 0.1* np.linalg.pinv(J_r(new_actual_q)) @ p_dot
 q_dot[3][0] = 0; q_dot[4][0] = 0; q_dot[5][0] = 0
 print("q_dot", q_dot)
 

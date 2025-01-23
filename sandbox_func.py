@@ -8,77 +8,77 @@ from r2r_functions import *
 import numpy as np
 
 ## ======================================================== REALSENSE TESTING =============================================================
-# OBB = False
-# model = YOLO("model/yolo11-hbb-toy-12-01.pt")  # toys for HBB object tracking
-#
-# # Check RealSense Camera Connection
-# ctx = rs.context()
-# devices = ctx.query_devices()
-#
-# if len(devices) == 0:
-# 	print("No device connected")
-# else:
-# 	print("device connected")
-# for dev in devices:
-# 	print(dev.get_info(rs.camera_info.name))
-#
-# # Initialize RealSense Pipeline
-# pipe = rs.pipeline()
-# cfg = rs.config()
-#
-# # Enable color stream (and depth if you want)
-# cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-# # cfg.enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
-#
-# # Start Streaming
-# pipe.start(cfg)
-#
-# while True:
-# 	frame = pipe.wait_for_frames()
-# 	color_frame = frame.get_color_frame()
-#
-# 	# Convert images to numpy arrays
-# 	color_image = np.asanyarray(color_frame.get_data())
-#
-# 	# # Show Images
-# 	# cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-# 	# cv2.imshow("Bismillah", color_image)
-#
-# 	# Run YOLO tracking on the frame
-# 	results = model.track(color_image, stream=True, show=True, persist=True,
-# 								 tracker='bytetrack.yaml')  # Tracking with byteTrack
-#
-# 	# Process and visualize the results of Object Tracking with YOLO (BUGS IN THIS PART)
-# 	for r in results:
-# 		annotated_frame = r.plot()
-#
-# 		if OBB == True:
-# 			# Data Extraction from object tracking with OBB format
-# 			cls = r.obb.cls  # class labels for each OBB box, only applied in YOLO OBB model
-# 			xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
-# 			len_cls = len(cls)
-# 			for i in range(len_cls):
-# 				xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-# 				detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
-#
-# 		else:  # HBB
-# 			# Data Extraction from object tracking with HBB format
-# 			cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
-# 			xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
-# 			len_cls = len(cls)
-# 			for i in range(len_cls):
-# 				detected_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]  # Append class with its HBB
-#
-# 		# Display the annotated frame
-# 		cv2.imshow("YOLOv11 OBB Inference - Realsense Camera", annotated_frame)
-#
-# 	# Break the loop if 'q' is pressed
-# 	if cv2.waitKey(1) & 0xFF == ord('q'):
-# 		break
-#
-# # Stop Streaming
-# pipe.stop()
-# cv2.destroyAllWindows()
+OBB = False
+model = YOLO("model/yolo11-hbb-toy-12-01.pt")  # toys for HBB object tracking
+
+# Check RealSense Camera Connection
+ctx = rs.context()
+devices = ctx.query_devices()
+
+if len(devices) == 0:
+	print("No device connected")
+else:
+	print("device connected")
+for dev in devices:
+	print(dev.get_info(rs.camera_info.name))
+
+# Initialize RealSense Pipeline
+pipe = rs.pipeline()
+cfg = rs.config()
+
+# Enable color stream (and depth if you want)
+cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+# cfg.enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
+
+# Start Streaming
+pipe.start(cfg)
+
+while True:
+	frame = pipe.wait_for_frames()
+	color_frame = frame.get_color_frame()
+
+	# Convert images to numpy arrays
+	color_image = np.asanyarray(color_frame.get_data())
+
+	# # Show Images
+	# cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+	# cv2.imshow("Bismillah", color_image)
+
+	# Run YOLO tracking on the frame
+	results = model.track(color_image, stream=True, show=True, persist=True,
+								 tracker='bytetrack.yaml')  # Tracking with byteTrack
+
+	# Process and visualize the results of Object Tracking with YOLO (BUGS IN THIS PART)
+	for r in results:
+		annotated_frame = r.plot()
+
+		if OBB == True:
+			# Data Extraction from object tracking with OBB format
+			cls = r.obb.cls  # class labels for each OBB box, only applied in YOLO OBB model
+			xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
+			len_cls = len(cls)
+			for i in range(len_cls):
+				xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+				detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
+
+		else:  # HBB
+			# Data Extraction from object tracking with HBB format
+			cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
+			xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
+			len_cls = len(cls)
+			for i in range(len_cls):
+				detected_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]  # Append class with its HBB
+
+		# Display the annotated frame
+		cv2.imshow("YOLOv11 OBB Inference - Realsense Camera", annotated_frame)
+
+	# Break the loop if 'q' is pressed
+	if cv2.waitKey(1) & 0xFF == ord('q'):
+		break
+
+# Stop Streaming
+pipe.stop()
+cv2.destroyAllWindows()
 
 ## ======================================================== WEBCAM TESTING ==============================================================
 # # Open the camera
@@ -245,25 +245,25 @@ hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
 # print("q_dot.shape", q_dot.shape)
 #
 ## ========================================= IMAGE JACOBIAN TESTING ==============================================================
-x0 = [[0.5],[0.3]]
-x1 = [[0.5],[0.9]]
-x2 = [[0.8],[0.7]]
-x3 = [[0.8],[0.3]]
-x4 = [[0.7],[0.1]]
-x5 = [[0.5],[0.1]]
-x6 = [[0.2],[0.1]]
-x7 = [[0.2],[0.3]]
-x8 = [[0.2],[0.7]]
-
-x_desired = x7 		# in image space
-x_actual = x0	# in tools space
-# x_actual_imagespace = R_wr3 @ (np.vstack((x_actual, 0)))		# in image space
-# delta_x = np.subtract(x_desired, x_actual_imagespace[0:2])
-delta_x = np.subtract(x_desired, x_actual)
-print("delta_x", delta_x)
-
-p_dot = - R_rw6 @ np.linalg.pinv(J_image_n(x_actual)) @ delta_x # ---> this is the correct way
-print("p_dot", p_dot)
+# x0 = [[0.5],[0.3]]
+# x1 = [[0.5],[0.9]]
+# x2 = [[0.8],[0.7]]
+# x3 = [[0.8],[0.3]]
+# x4 = [[0.7],[0.1]]
+# x5 = [[0.5],[0.1]]
+# x6 = [[0.2],[0.1]]
+# x7 = [[0.2],[0.3]]
+# x8 = [[0.2],[0.7]]
+#
+# x_desired = x7 		# in image space
+# x_actual = x0	# in tools space
+# # x_actual_imagespace = R_wr3 @ (np.vstack((x_actual, 0)))		# in image space
+# # delta_x = np.subtract(x_desired, x_actual_imagespace[0:2])
+# delta_x = np.subtract(x_desired, x_actual)
+# print("delta_x", delta_x)
+#
+# p_dot = - R_rw6 @ np.linalg.pinv(J_image_n(x_actual)) @ delta_x # ---> this is the correct way
+# print("p_dot", p_dot)
 # q_dot = - 10 * np.linalg.pinv(J_r(p_dot)) @ p_dot
 # print("q_dot", q_dot)
 
