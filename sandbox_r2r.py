@@ -120,6 +120,7 @@ while True:
 				# Capture the detected toy's box = desired box
 				if cls_i == 0.0 and desired_box == [0, 0, 0, 0, 0]:
 					desired_box = [*[cls_i], *(xyxyn[i].tolist())]  # First toy's box detected
+					print("desired box detected", desired_box)
 				
 				if cls_i == 1.0: # Toy's detected
 					reaching_box = [*[cls_i], *(xyxyn[i].tolist())]

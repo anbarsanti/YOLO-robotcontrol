@@ -1406,11 +1406,12 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     # Precompute & Predefine some terms
     e_cx = 0.05
     e_cy = 0.05
-    k_cx = 50
-    k_cy = 50
-    P_r = 0.1
+    k_cx = 75
+    k_cy = 75
+    P_r = 1
     f_cx = abs(r_box[0,0] - d_box[0,0]) ** 2 - e_cx ** 2
     f_cy = abs(r_box[1,0] - d_box[1,0]) ** 2 - e_cy ** 2
+    print("f_cx f_cy", f_cx, f_cy)
     
     # Reaching State --> Energy Function
     P_R = (k_cx / n) * (max(0, f_cx) ** n) + (k_cy / n) * (max(0, f_cy) ** n) + P_r
@@ -1425,21 +1426,22 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     
     # ============================ OVERLAPPING STATE ===============================
     # Precompute & Predefine some terms
-    k_amin = 1
-    k_amax = 1
-    A_dmin = 0.6 # 60%
-    A_dmax = 0.9 # 90%
+    k_amin = 0.1
+    k_amax = - 0.1
+    A_dmin = 0.16 # 60%
+    A_dmax = 0.2 # 90%
     f_amin = A_dmin - area
     f_amax = area - A_dmax
-    print("area", area)
+    if area != 0:
+        print("area", area)
     
     # Overlapping State --> Energy Function
     P_A = (k_amin / n) * (max(0, f_amin) ** n) + (k_amax / n) * (max(0, f_amax) ** n)
-    # print("P_A",P_A)
+    print("P_A",P_A)
     
     # Differentiation of P_A without J_alpha_a_J_r
     P_A_dot = ((-k_amin / (n ** 2)) * (max(0, f_amin) ** (n - 1)) + (k_amax / (n ** 2)) * (max(0, f_amax) ** (n - 1)))
-    # print("P_A_dot", P_A_dot)
+    print("P_A_dot", P_A_dot)
 
     # ============================ SCALING STATE ===============================
     # k_wmin = 0.2
@@ -1479,13 +1481,19 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     
     # Compute the Jacobian Matrix J_o @ J_I @ J_r @ q_dot
     J_o_I_r = (J_o(p_r_box)) @ (J_I_n(p_r_box)) @ R_ir6 @ (J_r(actualq))
-    J_o_I_r_pinv = np.linalg.pinv(J_o_I_r) # Pseudo Inverse using the Moore-Penrose matrix inversion
+    J_o_I_r_pinv = np.linalg.pinv(J_o_I_r)
     # print("J_o_I_r_pinv", J_o_I_r_pinv)
+    # print("p_r_box",p_r_box)
+    # print("J_o", J_o(p_r_box))
+    # print("J_I_n", J_I_n(p_r_box))
     
     # Compute the Jacobian Matrix J_alpha @ J_a @ J_r @ q_dot
     J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints)) @ R_ir6 @ (J_r(actualq))).reshape(1,6)
     J_alpha_a_r_pinv = - np.linalg.pinv(J_alpha_a_r)
     # print("J_alpha_a_r_pinv", J_alpha_a_r_pinv)
+    # print("interpoints", interpoints)
+    # print("J_alpha", J_alpha(interpoints))
+    # print("J_a_n", J_a_n(interpoints))
     
     # Total Jacobian and epsilon
     jacobian = np.concatenate((J_alpha_a_r_pinv, J_o_I_r_pinv), axis=1)

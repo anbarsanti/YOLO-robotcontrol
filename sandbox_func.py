@@ -7,140 +7,172 @@ sys.path.append('../RTDE_Python_Client_Library')
 from r2r_functions import *
 import numpy as np
 
-## ======================================================== REALSENSE TESTING =============================================================
+## ====================== INITIALIZATION OF TRACKING STUFF ==================================
 OBB = False
-model = YOLO("model/yolo11-hbb-toy-12-01.pt")  # toys for HBB object tracking
+model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
+# model = YOLO("model/yolo11-obb-11-16-watercan.pt") # watercan for OBB object tracking
+# model = YOLO("model/yolo11n.pt") # object tracking with HBB
 
-# Check RealSense Camera Connection
-ctx = rs.context()
-devices = ctx.query_devices()
+# if OBB==True: # Initialization for OBB case
+# 	desired_box = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+# 	reaching_box = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+# else: # Initialization for HBB case
+# 	desired_box = [0, 0, 0, 0, 0]
+# 	reaching_box = [0, 0, 0, 0, 0]
 
-if len(devices) == 0:
-	print("No device connected")
-else:
-	print("device connected")
-for dev in devices:
-	print(dev.get_info(rs.camera_info.name))
-
-# Initialize RealSense Pipeline
-pipe = rs.pipeline()
-cfg = rs.config()
-
-# Enable color stream (and depth if you want)
-cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-# cfg.enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
-
-# Start Streaming
-pipe.start(cfg)
-
-while True:
-	frame = pipe.wait_for_frames()
-	color_frame = frame.get_color_frame()
-
-	# Convert images to numpy arrays
-	color_image = np.asanyarray(color_frame.get_data())
-
-	# # Show Images
-	# cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-	# cv2.imshow("Bismillah", color_image)
-
-	# Run YOLO tracking on the frame
-	results = model.track(color_image, stream=True, show=True, persist=True,
-								 tracker='bytetrack.yaml')  # Tracking with byteTrack
-
-	# Process and visualize the results of Object Tracking with YOLO (BUGS IN THIS PART)
-	for r in results:
-		annotated_frame = r.plot()
-
-		if OBB == True:
-			# Data Extraction from object tracking with OBB format
-			cls = r.obb.cls  # class labels for each OBB box, only applied in YOLO OBB model
-			xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
-			len_cls = len(cls)
-			for i in range(len_cls):
-				xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-				detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
-
-		else:  # HBB
-			# Data Extraction from object tracking with HBB format
-			cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
-			xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
-			len_cls = len(cls)
-			for i in range(len_cls):
-				detected_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]  # Append class with its HBB
-
-		# Display the annotated frame
-		cv2.imshow("YOLOv11 OBB Inference - Realsense Camera", annotated_frame)
-
-	# Break the loop if 'q' is pressed
-	if cv2.waitKey(1) & 0xFF == ord('q'):
-		break
-
-# Stop Streaming
-pipe.stop()
-cv2.destroyAllWindows()
-
-## ======================================================== WEBCAM TESTING ==============================================================
-# # Open the camera
-# cap = cv2.VideoCapture(0)  # Use 0 for the default camera, or change to a specific camera index if needed
-# # 0 = web camera, 2 = depth camera
+## ======================================================== REALSENSE TESTING =============================================================
 #
-# # Set the desired frame width and height
-# cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-# cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+# # Check RealSense Camera Connection
+# ctx = rs.context()
+# devices = ctx.query_devices()
 #
-# while cap.isOpened():
-# 	success, frame = cap.read()
-# 	if success:
-# 		# Run YOLOv8 OBB tracking on the frame. Tracking also can be used for OBB
-# 		# persist = True --> to maintain track continuity between frames
-# 		results = model.track(frame, stream=True, show=True, persist=True,
-# 									 tracker='bytetrack.yaml')  # Tracking with byteTrack
+# if len(devices) == 0:
+# 	print("No device connected")
+# else:
+# 	print("device connected")
+# for dev in devices:
+# 	print(dev.get_info(rs.camera_info.name))
 #
-# 		# Process, extract, and visualize the results
-# 		for r in results:
-# 			annotated_frame = r.plot()
+# # Initialize RealSense Pipeline
+# pipe = rs.pipeline()
+# cfg = rs.config()
 #
-# 			# Results Documentation:
-# 			# https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
+# # Enable color stream (and depth if you want)
+# cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+# # cfg.enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
 #
-# 			if OBB == True:
-# 				# Data Extraction from object tracking with OBB format
-# 				cls = r.obb.cls  # only applied in YOLO OBB model
-# 				xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
-# 				len_cls = len(cls)
-# 				for i in range(len_cls):
-# 					xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-# 					detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
+# # Start Streaming
+# pipe.start(cfg)
 #
-# 			else:  # HBB
-# 				# Data Extraction from object tracking with HBB format
-# 				cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
-# 				xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
-# 				len_cls = len(cls)
-# 				for i in range(len_cls):
-# 					detected_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]  # Append class with its HBB
+# while True:
+# 	frame = pipe.wait_for_frames()
+# 	color_frame = frame.get_color_frame()
 #
-# 			# Display the annotated frame
-# 			cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
+# 	# Convert images to numpy arrays
+# 	color_image = np.asanyarray(color_frame.get_data())
 #
-# 		# Break the loop if 'q' is pressed
-# 		if cv2.waitKey(1) & 0xFF == ord('q'):
-# 			break
-# 	else:
+# 	# # Show Images
+# 	# cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+# 	# cv2.imshow("Bismillah", color_image)
+#
+# 	# Run YOLO tracking on the frame
+# 	results = model.track(color_image, stream=True, show=True, persist=True,
+# 								 tracker='bytetrack.yaml')  # Tracking with byteTrack
+#
+# 	# Process and visualize the results of Object Tracking with YOLO (BUGS IN THIS PART)
+# 	for r in results:
+# 		annotated_frame = r.plot()
+#
+# 		if OBB == True:
+# 			# Data Extraction from object tracking with OBB format
+# 			cls = r.obb.cls  # class labels for each OBB box, only applied in YOLO OBB model
+# 			xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
+# 			len_cls = len(cls)
+# 			for i in range(len_cls):
+# 				xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+# 				detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
+#
+# 		else:  # HBB
+# 			# Data Extraction from object tracking with HBB format
+# 			cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
+# 			xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
+# 			len_cls = len(cls)
+# 			for i in range(len_cls):
+# 				detected_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]  # Append class with its HBB
+#
+# 		# Display the annotated frame
+# 		cv2.imshow("YOLOv11 OBB Inference - Realsense Camera", annotated_frame)
+#
+# 	# Break the loop if 'q' is pressed
+# 	if cv2.waitKey(1) & 0xFF == ord('q'):
 # 		break
 #
-# # Release resources
-# cap.release()
+# # Stop Streaming
+# pipe.stop()
 # cv2.destroyAllWindows()
+
+## ======================================================== WEBCAM TESTING ==============================================================
+# Open the camera
+cap = cv2.VideoCapture(0)  # Use 0 for the default camera, or change to a specific camera index if needed
+# 0 = web camera, 2 = depth camera
+
+# Set the desired frame width and height
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+while cap.isOpened():
+	success, frame = cap.read()
+	if success:
+		# Run YOLOv8 OBB tracking on the frame. Tracking also can be used for OBB
+		# persist = True --> to maintain track continuity between frames
+		results = model.track(frame, stream=True, show=True, persist=True,
+									 tracker='bytetrack.yaml')  # Tracking with byteTrack
+
+		# Process, extract, and visualize the results
+		for r in results:
+			annotated_frame = r.plot()
+
+			# Results Documentation:
+			# https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
+
+			if OBB == True:
+				# Data Extraction from object tracking with OBB format
+				cls = r.obb.cls  # only applied in YOLO OBB model
+				xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
+				len_cls = len(cls)
+				for i in range(len_cls):
+					xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+					detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
+
+			else:  # HBB
+				# Data Extraction from object tracking with HBB format
+				cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
+				xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
+				len_cls = len(cls)
+				for i in range(len_cls):
+					cls_i = cls[i].tolist()
+					
+					if cls_i == 0.0: # Box's detected
+						xyxyn_rev = xyxyn[i].tolist()
+						
+						# Shift the desired area to above the detected box
+						xyxyn_rev[1] = xyxyn_rev[1] - 0.38
+						xyxyn_rev[3] = xyxyn_rev[3] - 0.38
+						
+						# Define the desired box
+						desired_box = [*[cls_i], *xyxyn_rev]  # First toy's box detected
+						
+						# Draw the desired box
+						cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
+										  (int(desired_box[3] * 640), int(desired_box[4] * 480)), (255, 130, 130), 2)
+						cv2.putText(annotated_frame, "Desired Area",
+										(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
+										cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 130, 130), 2)
+
+					
+					if cls_i == 1.0:  # Toy's detected
+						reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
+				
+			# Display the annotated frame
+			cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
+
+		# Break the loop if 'q' is pressed
+		if cv2.waitKey(1) & 0xFF == ord('q'):
+			break
+	else:
+		break
+
+# Release resources
+cap.release()
+cv2.destroyAllWindows()
 
 ## ===================================================  HBB TESTING ===================================================
 # hbbA_xywh = np.array([1, 0.7, 0.3, 0.4, 0.4]) #xywh format
 # hbbB_xywh = np.array([1, 0.8, 0.2, 0.2, 0.2]) #xywh format
 # hbbC_xywh = np.array([1, 0.35, 0.6, 0.5, 0.4]) #xywh format
-hbbD_xyxy = np.array([0, 0.2, 0.2, 0.8, 0.8])
-hbbE_xyxy = np.array([0, 0.3, 0.1, 0.5, 0.9])
-hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
+# hbbD_xyxy = np.array([0, 0.2, 0.2, 0.8, 0.8])
+# hbbE_xyxy = np.array([0, 0.3, 0.1, 0.5, 0.9])
+# hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
 # #
 # # print("area HBB A and B", intersection_area_HBB_xywh(hbbA_xywh, hbbB_xywh))
 # # print("area HBB A and C", intersection_area_HBB_xywh(hbbA_xywh, hbbC_xywh))
