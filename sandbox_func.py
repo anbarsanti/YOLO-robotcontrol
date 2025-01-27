@@ -39,7 +39,7 @@ model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
 #
 # # Enable color stream (and depth if you want)
 # cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-# # cfg.enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
+# cfg.enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
 #
 # # Start Streaming
 # pipe.start(cfg)
@@ -47,9 +47,11 @@ model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
 # while True:
 # 	frame = pipe.wait_for_frames()
 # 	color_frame = frame.get_color_frame()
+# 	depth_frame = frame.get_depth_frame()
 #
 # 	# Convert images to numpy arrays
 # 	color_image = np.asanyarray(color_frame.get_data())
+# 	# depth_image = np.asanyarray(depth_frame.get_data())
 #
 # 	# # Show Images
 # 	# cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
@@ -59,7 +61,7 @@ model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
 # 	results = model.track(color_image, stream=True, show=True, persist=True,
 # 								 tracker='bytetrack.yaml')  # Tracking with byteTrack
 #
-# 	# Process and visualize the results of Object Tracking with YOLO (BUGS IN THIS PART)
+# 	# Process and visualize the results of Object Tracking with YOLO
 # 	for r in results:
 # 		annotated_frame = r.plot()
 #
@@ -78,7 +80,36 @@ model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
 # 			xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
 # 			len_cls = len(cls)
 # 			for i in range(len_cls):
-# 				detected_box = [*[(cls[i].tolist())], *(xyxyn[i].tolist())]  # Append class with its HBB
+# 				cls_i = cls[i].tolist()
+#
+# 				if cls_i == 0.0:  # Box's detected
+# 					xyxyn_d = xyxyn[i].tolist()
+#
+# 					# Shift the desired area to above the detected box
+# 					xyxyn_d[1] = xyxyn_d[1] - 0.30
+# 					xyxyn_d[3] = xyxyn_d[3] - 0.30
+#
+# 					# Define the desired box
+# 					desired_box = [*[cls_i], *xyxyn_d]  # First toy's box detected
+# 					x_d = int((xyxyn_d[0]+xyxyn_d[2])*320)
+# 					y_d = int((xyxyn_d[1]+xyxyn_d[3])*240)
+# 					desired_box_depth = depth_frame.get_distance(x_d, y_d)
+# 					print("desired_box_depth", desired_box_depth)
+#
+# 					# Draw the desired box
+# 					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
+# 									  (int(desired_box[3] * 640), int(desired_box[4] * 480)), (255, 220, 220), 2)
+# 					cv2.putText(annotated_frame, "Desired Area",
+# 									(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
+# 									cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 220, 220), 2)
+#
+# 				if cls_i == 1.0:  # Toy's detected
+# 					xyxyn_r = xyxyn[i].tolist()
+# 					reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
+# 					x_r = int((xyxyn_r[0]+xyxyn_r[2])*320)
+# 					y_r = int((xyxyn_r[1]+xyxyn_r[3])*240)
+# 					reaching_depth = depth_frame.get_distance(x_r, y_r)
+# 					print("toy_depth", reaching_depth)
 #
 # 		# Display the annotated frame
 # 		cv2.imshow("YOLOv11 OBB Inference - Realsense Camera", annotated_frame)
@@ -92,87 +123,87 @@ model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
 # cv2.destroyAllWindows()
 
 ## ======================================================== WEBCAM TESTING ==============================================================
-# Open the camera
-cap = cv2.VideoCapture(0)  # Use 0 for the default camera, or change to a specific camera index if needed
-# 0 = web camera, 2 = depth camera
-
-# Set the desired frame width and height
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-
-while cap.isOpened():
-	success, frame = cap.read()
-	if success:
-		# Run YOLOv8 OBB tracking on the frame. Tracking also can be used for OBB
-		# persist = True --> to maintain track continuity between frames
-		results = model.track(frame, stream=True, show=True, persist=True,
-									 tracker='bytetrack.yaml')  # Tracking with byteTrack
-
-		# Process, extract, and visualize the results
-		for r in results:
-			annotated_frame = r.plot()
-
-			# Results Documentation:
-			# https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
-
-			if OBB == True:
-				# Data Extraction from object tracking with OBB format
-				cls = r.obb.cls  # only applied in YOLO OBB model
-				xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
-				len_cls = len(cls)
-				for i in range(len_cls):
-					xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-					detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
-
-			else:  # HBB
-				# Data Extraction from object tracking with HBB format
-				cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
-				xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
-				len_cls = len(cls)
-				for i in range(len_cls):
-					cls_i = cls[i].tolist()
-					
-					if cls_i == 0.0: # Box's detected
-						xyxyn_rev = xyxyn[i].tolist()
-						
-						# Shift the desired area to above the detected box
-						xyxyn_rev[1] = xyxyn_rev[1] - 0.38
-						xyxyn_rev[3] = xyxyn_rev[3] - 0.38
-						
-						# Define the desired box
-						desired_box = [*[cls_i], *xyxyn_rev]  # First toy's box detected
-						
-						# Draw the desired box
-						cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
-										  (int(desired_box[3] * 640), int(desired_box[4] * 480)), (255, 130, 130), 2)
-						cv2.putText(annotated_frame, "Desired Area",
-										(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
-										cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 130, 130), 2)
-
-					
-					if cls_i == 1.0:  # Toy's detected
-						reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
-				
-			# Display the annotated frame
-			cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
-
-		# Break the loop if 'q' is pressed
-		if cv2.waitKey(1) & 0xFF == ord('q'):
-			break
-	else:
-		break
-
-# Release resources
-cap.release()
-cv2.destroyAllWindows()
+# # Open the camera
+# cap = cv2.VideoCapture(0)  # Use 0 for the default camera, or change to a specific camera index if needed
+# # 0 = web camera, 2 = depth camera
+#
+# # Set the desired frame width and height
+# cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+# cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+#
+# while cap.isOpened():
+# 	success, frame = cap.read()
+# 	if success:
+# 		# Run YOLOv8 OBB tracking on the frame. Tracking also can be used for OBB
+# 		# persist = True --> to maintain track continuity between frames
+# 		results = model.track(frame, stream=True, show=True, persist=True,
+# 									 tracker='bytetrack.yaml')  # Tracking with byteTrack
+#
+# 		# Process, extract, and visualize the results
+# 		for r in results:
+# 			annotated_frame = r.plot()
+#
+# 			# Results Documentation:
+# 			# https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
+#
+# 			if OBB == True:
+# 				# Data Extraction from object tracking with OBB format
+# 				cls = r.obb.cls  # only applied in YOLO OBB model
+# 				xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
+# 				len_cls = len(cls)
+# 				for i in range(len_cls):
+# 					xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+# 					detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
+#
+# 			else:  # HBB
+# 				# Data Extraction from object tracking with HBB format
+# 				cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
+# 				xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
+# 				len_cls = len(cls)
+# 				for i in range(len_cls):
+# 					cls_i = cls[i].tolist()
+#
+# 					if cls_i == 0.0: # Box's detected
+# 						xyxyn_rev = xyxyn[i].tolist()
+#
+# 						# Shift the desired area to above the detected box
+# 						xyxyn_rev[1] = xyxyn_rev[1] - 0.38
+# 						xyxyn_rev[3] = xyxyn_rev[3] - 0.38
+#
+# 						# Define the desired box
+# 						desired_box = [*[cls_i], *xyxyn_rev]  # First toy's box detected
+#
+# 						# Draw the desired box
+# 						cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
+# 										  (int(desired_box[3] * 640), int(desired_box[4] * 480)), (255, 130, 130), 2)
+# 						cv2.putText(annotated_frame, "Desired Area",
+# 										(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
+# 										cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 130, 130), 2)
+#
+#
+# 					if cls_i == 1.0:  # Toy's detected
+# 						reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
+#
+# 			# Display the annotated frame
+# 			cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
+#
+# 		# Break the loop if 'q' is pressed
+# 		if cv2.waitKey(1) & 0xFF == ord('q'):
+# 			break
+# 	else:
+# 		break
+#
+# # Release resources
+# cap.release()
+# cv2.destroyAllWindows()
 
 ## ===================================================  HBB TESTING ===================================================
 # hbbA_xywh = np.array([1, 0.7, 0.3, 0.4, 0.4]) #xywh format
 # hbbB_xywh = np.array([1, 0.8, 0.2, 0.2, 0.2]) #xywh format
 # hbbC_xywh = np.array([1, 0.35, 0.6, 0.5, 0.4]) #xywh format
-# hbbD_xyxy = np.array([0, 0.2, 0.2, 0.8, 0.8])
-# hbbE_xyxy = np.array([0, 0.3, 0.1, 0.5, 0.9])
-# hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
+hbbD_xyxy = np.array([0, 0.2, 0.2, 0.8, 0.8])
+hbbE_xyxy = np.array([0, 0.3, 0.1, 0.5, 0.9])
+hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
 # #
 # # print("area HBB A and B", intersection_area_HBB_xywh(hbbA_xywh, hbbB_xywh))
 # # print("area HBB A and C", intersection_area_HBB_xywh(hbbA_xywh, hbbC_xywh))
@@ -223,7 +254,7 @@ cv2.destroyAllWindows()
 # print("interp C and E:", p5)
 
 # # # # ================================= JACOBIAN TESTING ================================================
-# q = np.array([0.23, 0.91, 0.22, 0.12, 0.42, 0.74]).reshape((-1,1))
+q = np.array([0.23, 0.91, 0.22, 0.12, 0.42, 0.74]).reshape((-1,1))
 # p_r_hbb = cxyxy2xyxyxy(hbbD_xyxy)
 # p_r_obb = cxyxyxyxy2xyxyxy(obbB)
 #
@@ -252,14 +283,14 @@ cv2.destroyAllWindows()
 
 # ## ===================== J_olpha_a_r Testing =====================
 # p1 = intersection_points_HBB_xyxy(hbbD_xyxy, hbbF_xyxy)
-# # # print("interp D and E:", p1)
-# # # # print("J_alpha(p1)", J_alpha(p1))
-# # # # print("J_alpha(p1).shape", J_alpha(p1).shape)
+# print("interp D and E:", p1)
+# print("J_alpha(p1)", J_alpha(p1))
+# print("J_alpha(p1).shape", J_alpha(p1).shape)
 # print("J_a_n(p1)", J_a(p1))
 # print("J_a_n(p1).shape", J_a(p1).shape)
-# # # print("J_r(q)", J_r(q))
-# # # print("J_r(q).shape", J_r(q).shape)
-# J_alpha_a_r = ((J_alpha(p1)) @ (J_a(p1)) @ (J_r(q))).reshape(1,6)
+# print("J_r(q)", J_r(q))
+# print("J_r(q).shape", J_r(q).shape)
+# J_alpha_a_r = ((J_alpha(p1).reshape(1,8)) @ (J_a(p1)) @ (J_r(q))) #.reshape(1,6)
 # print("J_alpha_a_r.shape", J_alpha_a_r.shape)
 # J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
 # print("J_alpha_a_r_pinv", J_alpha_a_r_pinv)
@@ -351,13 +382,19 @@ cv2.destroyAllWindows()
 
 
 
+# ## =================== JACOBIAN AREA TESTING =========================
+interpoints=  [[0.6435770392417908, 0.4247528314590454], [0.6583267450332642, 0.4247528314590454], [0.6583267450332642, 0.43561187386512756], [0.6435770392417908, 0.43561187386512756]]
+area = 0.00016016768066684506
 
+J = [[-0.66132, -0.28098, -0.71201, -0.75357,  0.21018, -0.51265]]
+print ("J_pinv", np.linalg.pinv(J))
 
+J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints)) @ (R_ir6) @ (J_r(q))).reshape(1,6)
+J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
+print(J_alpha_a_r_pinv)
 
-
-
-
-
+neg_interpoints = list(map(lambda num: -num, interpoints))
+print("neg_interpoints", neg_interpoints)
 
 
 

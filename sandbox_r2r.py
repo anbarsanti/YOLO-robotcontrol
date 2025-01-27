@@ -73,11 +73,10 @@ cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 pipe.start(cfg)
 
 # Wait until the realsense stable
-while time.time() - time_start < 5:
+while time.time() - time_start < 6:
 	frame = pipe.wait_for_frames()
 	color_frame = frame.get_color_frame()
-	
-	# Convert images to numpy arrays
+	# Convert images to numpy arraysq
 	color_image = np.asanyarray(color_frame.get_data())
 	
 	# Run YOLO tracking on the frame
@@ -117,28 +116,33 @@ while True:
 			for i in range(len_cls):
 				cls_i = cls[i].tolist()
 				
-				# Capture the detected toy's box = desired box
-				if cls_i == 0.0 and desired_box == [0, 0, 0, 0, 0]:
-					desired_box = [*[cls_i], *(xyxyn[i].tolist())]  # First toy's box detected
-					print("desired box detected", desired_box)
+				if cls_i == 0.0: # Box's detected
+					xyxyn_rev = xyxyn[i].tolist()
+					
+					# Shift the desired area to above the detected box
+					xyxyn_rev[1] = xyxyn[i].tolist()[1] - 0.25
+					xyxyn_rev[3] = xyxyn[i].tolist()[3] - 0.25
+					
+					# Define the desired box
+					desired_box = [*[cls_i], *xyxyn_rev]  # First toy's box detected
+					
+					# Draw the desired box
+					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
+									  (int(desired_box[3] * 640), int(desired_box[4] * 480)), (255, 255, 255), 2)
+					cv2.putText(annotated_frame, "Desired Area",
+									(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
+									cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
 				
 				if cls_i == 1.0: # Toy's detected
 					reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
 				
-			# Draw the desired box if it already exists
-			if desired_box != [0, 0, 0, 0, 0]:
-				cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
-								  (int(desired_box[3] * 640), int(desired_box[4] * 480)), (0, 255, 0), 2)
-				cv2.putText(annotated_frame, "Desired Box", (int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
-								cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
-		
 			## ==================== UR5E =========================================
 			# Send the q_dot to UR5e
 			list_to_setp(setp, q_dot)
 			con.send(setp)
 			state = con.receive()
 			actual_p = np.array(state.actual_TCP_pose) # dimension (1,6)
-			actual_q = np.array(state.actual_q) # dimension (1,6)
+			actual_q = np.array(state.actual_q) # dimension (1,6)qqqq
 
 			## ==================== CONTROLLER =========================================
 			q_dot, epsilon, area = r2r_control(desired_box, reaching_box, actual_q, OBB=OBB)
@@ -152,7 +156,7 @@ while True:
 			q_dot_plot = np.append(q_dot_plot, q_dot, axis=1)
 			
 		# Display the annotated frame
-		cv2.imshow("YOLOv11 Tracking - Realsense", annotated_frame)
+		cv2.imshow("YOLqOv11 Tracking - Realsense", annotated_frame)
 	
 	# Break the loop if 'q' is pressed
 	if cv2.waitKey(1) & 0xFF == ord('q'):

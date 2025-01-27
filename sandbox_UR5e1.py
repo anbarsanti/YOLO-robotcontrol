@@ -56,7 +56,7 @@ x6 = [[0.2],[0.1]]
 x7 = [[0.2],[0.3]]
 x8 = [[0.2],[0.7]]
 
-x_desired = x8 		# in image space
+x_desired = x4 		# in image space
 x_actual = x0	# in tools space
 # x_actual_imagespace = R_ir3 @ (np.vstack((x_actual, 0)))		# in image space
 # delta_x = np.subtract(x_desired, x_actual_imagespace[0:2])
@@ -69,7 +69,7 @@ p_dot[3][0] = 0; p_dot[4][0] = 0; p_dot[5][0] = 0
 print("p_dot", p_dot)
 
 new_actual_q = new_actual_q.reshape(6,1)
-q_dot = 0.1* np.linalg.pinv(J_r(new_actual_q)) @ p_dot
+q_dot = 50* np.linalg.pinv(J_r(new_actual_q)) @ p_dot
 q_dot[3][0] = 0; q_dot[4][0] = 0; q_dot[5][0] = 0
 print("q_dot", q_dot)
 

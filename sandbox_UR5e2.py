@@ -22,8 +22,8 @@ else: # Initialization for HBB case
 	reaching_box = [0, 0, 0, 0, 0]
 
 ## ========================= INITIALIZATION OF ROBOT COMMUNICATION  =========================
-ROBOT_HOST = "10.149.230.168" # in robotics lab
-# ROBOT_HOST = "192.168.18.13"  # virtual machine in from linux host
+# ROBOT_HOST = "10.149.230.168" # in robotics lab
+ROBOT_HOST = "10.91.11.154"  # virtual machine in from linux host
 ROBOT_PORT = 30004
 config_filename = "control_loop_configuration.xml"
 FREQUENCY = 1000 # send data in 500 Hz instead of default 125Hz
@@ -86,41 +86,36 @@ while cap.isOpened():
 				for i in range(len_cls):
 					cls_i = cls[i].tolist()
 					
-					# Capture the detected toy's box = desired box
-					if cls_i == 0.0:  # First toy's box detected
-						area = 0
-						# delta_x in image space
-						x_d = (np.array(xyxyn[i].tolist())[0] + np.array(xyxyn[i].tolist())[2]) /2
-						y_d = (np.array(xyxyn[i].tolist())[1] + np.array(xyxyn[i].tolist())[3]) /2
-						x_desired = [[x_d],[y_d]] # in image space
-						print("x_desired", x_d, y_d)
-						actual_p = actual_p.reshape(6, 1)
-						x_actual = [[actual_p[0][0]],[actual_p[1][0]]] 				# in task space
-						x_actual_imagespace = R_wr3 @ (np.vstack((x_actual, 0))) # convert to imagespace
-						print("x_actual_imagespace", x_actual_imagespace.reshape(1,3))
-						delta_x = np.subtract(x_desired, x_actual_imagespace[0:2])
-						print("delta_x", delta_x.reshape(1,2))
+					if cls_i == 0.0:  # Box's detected
+						xyxyn_rev = xyxyn[i].tolist()
 						
-						# p_dot in toolspace
-						p_dot = - R_rw6 @ np.linalg.pinv(J_image_n(x_actual)) @ delta_x
-						print("p_dot", p_dot.reshape(1,6))
+						# Shift the desired area to above the detected box
+						xyxyn_rev[1] = xyxyn_rev[1] - 0.38
+						xyxyn_rev[3] = xyxyn_rev[3] - 0.38
 						
-						# q_dot
-						actual_q = actual_q.reshape(6, 1)
-						q_dot = np.array(-5 * np.linalg.pinv(J_r(actual_q)) @ p_dot)
-						print("q_dot", q_dot.reshape(1,6))
+						# Define the desired box
+						desired_box = [*[cls_i], *xyxyn_rev]  # First toy's box detected
+						
+						# Draw the desired box
+						cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
+										  (int(desired_box[3] * 640), int(desired_box[4] * 480)), (255, 130, 130), 2)
+						cv2.putText(annotated_frame, "Desired Area",
+										(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
+										cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 130, 130), 2)
 					
-					else:
-						q_dot = np.zeros((6, 1))
+					if cls_i == 1.0:  # Toy's detected
+						reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
 				
 				## ==================== UR5E =========================================
 				# Send the q_dot to UR5e
-			
 				list_to_setp(setp, q_dot)
 				con.send(setp)
 				state = con.receive()
-				actual_p = np.array(state.actual_TCP_pose) # dimension (1,6)
-				actual_q = np.array(state.actual_q) # dimension (1,6)
+				actual_p = np.array(state.actual_TCP_pose)  # dimension (1,6)
+				actual_q = np.array(state.actual_q)  # dimension (1,6)
+				
+				## ==================== CONTROLLER =========================================
+				q_dot, epsilon, area = r2r_control(desired_box, reaching_box, actual_q, OBB=OBB)
 				
 				## =================== SAVE FOR PLOTTING AND ANALYSIS ===================================
 				time_plot.append(time.time() - time_start)

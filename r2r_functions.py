@@ -773,7 +773,7 @@ def intersection_points_HBB_xyxy(boxA, boxB):
         x_right = min(boxA[3], boxB[3])
         y_bottom = min(boxA[4], boxB[4])
         
-        intersection_points = [[x_left, y_top], [x_right, y_top], [x_right, y_bottom], [x_left, y_bottom]]
+        intersection_points = [[-x_left, -y_top], [-x_right, -y_top], [-x_right, -y_bottom], [-x_left, -y_bottom]]
        
     return intersection_points
 
@@ -931,9 +931,16 @@ R_ir6 = np.array([[0, -1, 0, 0, 0, 0],
 					  [0, 0, 0, 0, 0, -1],
 					  [0, 0, 0, 1, 0, 0]])
 
+R_ir6_mod = np.array([[-1, 0, 0, 0, 0, 0],
+                      [0, 0, -1, 0, 0, 0],
+                      [0, 1, 0, 0, 0, 0],
+                      [0, 0, 0, -1, 0, 0],
+                      [0, 0, 0, 0, 0, -1],
+                      [0, 0, 0, 0, 1, 0]])
+
 R_ri3 = R_ir3.T
 R_ri6 = R_ir6.T
-
+R_ri6_mod = R_ir6_mod.T
 # Transformation matrix from webcam coordinate sytem to robot coordinate system
 # For Simulation Purpose
 R_rw3 = np.array([[0, 0, -1],
@@ -1101,7 +1108,6 @@ def J_I(p):
         [0, -f_y / depth, y2 / depth, (f_y * f_y + y2 * y2) / f_y, -x2 * y2 / f_y, -x2],
     ]
     return np.array(image_jacobian)
-
 
 def J_I_n(p, Z=0.3):
     """
@@ -1384,8 +1390,8 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
 		 q_dot, the joint velocity of UR5e robotic arm, with [[q1], [q2], [q3], [q4], [q5], [q6]] in column vector
 	 """
     # Precompute & Predefine some terms
-    n = 3
-    k = 25
+    n = 2
+    k = 30
     actualq = np.array(actual_q).reshape((-1, 1)) # Reshape the actual_q
     
     # Prepare for Gamma Calculation and Area calculation
@@ -1401,13 +1407,14 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
         p_r_box = cxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
         area = intersection_area_HBB_xyxy(reaching_box, desired_box)
         interpoints = intersection_points_HBB_xyxy(reaching_box, desired_box)
+
     
     ## ============================ REACHING STATE ===============================
     # Precompute & Predefine some terms
     e_cx = 0.05
     e_cy = 0.05
-    k_cx = 75
-    k_cy = 75
+    k_cx = 100
+    k_cy = 100
     P_r = 1
     f_cx = abs(r_box[0,0] - d_box[0,0]) ** 2 - e_cx ** 2
     f_cy = abs(r_box[1,0] - d_box[1,0]) ** 2 - e_cy ** 2
@@ -1426,21 +1433,24 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     
     # ============================ OVERLAPPING STATE ===============================
     # Precompute & Predefine some terms
-    k_amin = 0.1
-    k_amax = - 0.1
-    A_dmin = 0.16 # 60%
-    A_dmax = 0.2 # 90%
+    k_amin = 75
+    k_amax = 75
+    A_dmin = 0.1
+    A_dmax = 0.2
     f_amin = A_dmin - area
     f_amax = area - A_dmax
     if area != 0:
         print("area", area)
+        print("interpoints: ", interpoints)
+    print("f_amin", f_amin)
+    print("f_amax", f_amax)
     
     # Overlapping State --> Energy Function
     P_A = (k_amin / n) * (max(0, f_amin) ** n) + (k_amax / n) * (max(0, f_amax) ** n)
     print("P_A",P_A)
     
     # Differentiation of P_A without J_alpha_a_J_r
-    P_A_dot = ((-k_amin / (n ** 2)) * (max(0, f_amin) ** (n - 1)) + (k_amax / (n ** 2)) * (max(0, f_amax) ** (n - 1)))
+    P_A_dot = ((k_amin / (n ** 2)) * (max(0, f_amin) ** (n - 1)) + (k_amax / (n ** 2)) * (max(0, f_amax) ** (n - 1)))
     print("P_A_dot", P_A_dot)
 
     # ============================ SCALING STATE ===============================
@@ -1482,18 +1492,14 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     # Compute the Jacobian Matrix J_o @ J_I @ J_r @ q_dot
     J_o_I_r = (J_o(p_r_box)) @ (J_I_n(p_r_box)) @ R_ir6 @ (J_r(actualq))
     J_o_I_r_pinv = np.linalg.pinv(J_o_I_r)
-    # print("J_o_I_r_pinv", J_o_I_r_pinv)
-    # print("p_r_box",p_r_box)
-    # print("J_o", J_o(p_r_box))
-    # print("J_I_n", J_I_n(p_r_box))
     
     # Compute the Jacobian Matrix J_alpha @ J_a @ J_r @ q_dot
     J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints)) @ R_ir6 @ (J_r(actualq))).reshape(1,6)
-    J_alpha_a_r_pinv = - np.linalg.pinv(J_alpha_a_r)
-    # print("J_alpha_a_r_pinv", J_alpha_a_r_pinv)
-    # print("interpoints", interpoints)
-    # print("J_alpha", J_alpha(interpoints))
-    # print("J_a_n", J_a_n(interpoints))
+    J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
+    print("J_alpha", J_alpha(interpoints))
+    print("J_a_n", J_a_n(interpoints))
+    print("J_alpha_a_r", J_alpha_a_r)
+    print("J_alpha_a_r_pinv", J_alpha_a_r_pinv)
     
     # Total Jacobian and epsilon
     jacobian = np.concatenate((J_alpha_a_r_pinv, J_o_I_r_pinv), axis=1)
@@ -1503,6 +1509,7 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     
     # The Controller
     q_dot = -k *(jacobian @ epsilon)
+    q_dot[3][0]=0; q_dot[4][0]=0; q_dot[5][0]=0
     print("q_dot",q_dot)
     
     return q_dot, epsilon, area
