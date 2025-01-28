@@ -24,6 +24,7 @@ import rtde as rtde_config
 from matplotlib import pyplot as plt
 from min_jerk_planner_translation import PathPlanTranslation
 import time
+import transformations
 
 ## ====================== UR5e FUNCTIONS ===============================================
 
@@ -773,7 +774,7 @@ def intersection_points_HBB_xyxy(boxA, boxB):
         x_right = min(boxA[3], boxB[3])
         y_bottom = min(boxA[4], boxB[4])
         
-        intersection_points = [[-x_left, -y_top], [-x_right, -y_top], [-x_right, -y_bottom], [-x_left, -y_bottom]]
+        intersection_points = [[x_left, y_top], [x_right, y_top], [x_right, y_bottom], [x_left, y_bottom]]
        
     return intersection_points
 
@@ -1403,7 +1404,9 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
         interpoints = intersection_points_OBB_diy(reaching_box, desired_box)
     else:  # HBB
         r_box = cxyxy2xywhr(reaching_box) # Conversion for HBB to xywhr format
+        print("reaching_box", r_box)
         d_box = cxyxy2xywhr(desired_box) # Conversion for HBB to xywhr format
+        print("desired_box", d_box)
         p_r_box = cxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
         area = intersection_area_HBB_xyxy(reaching_box, desired_box)
         interpoints = intersection_points_HBB_xyxy(reaching_box, desired_box)
@@ -1418,7 +1421,7 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     P_r = 1
     f_cx = abs(r_box[0,0] - d_box[0,0]) ** 2 - e_cx ** 2
     f_cy = abs(r_box[1,0] - d_box[1,0]) ** 2 - e_cy ** 2
-    print("f_cx f_cy", f_cx, f_cy)
+    # print("f_cx f_cy", f_cx, f_cy)
     
     # Reaching State --> Energy Function
     P_R = (k_cx / n) * (max(0, f_cx) ** n) + (k_cy / n) * (max(0, f_cy) ** n) + P_r
@@ -1442,8 +1445,8 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     if area != 0:
         print("area", area)
         print("interpoints: ", interpoints)
-    print("f_amin", f_amin)
-    print("f_amax", f_amax)
+    # print("f_amin", f_amin)
+    # print("f_amax", f_amax)
     
     # Overlapping State --> Energy Function
     P_A = (k_amin / n) * (max(0, f_amin) ** n) + (k_amax / n) * (max(0, f_amax) ** n)
@@ -1454,32 +1457,38 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     print("P_A_dot", P_A_dot)
 
     # ============================ SCALING STATE ===============================
-    # k_wmin = 0.2
-    # k_wmax = 0.2
-    # k_hmin = 0.2
-    # k_hmax = 0.2
-    # k_theta = 0.2
-    # w_min = 0.6 # 60%
-    # w_max = 0.9 # 90%
-    # h_min = 0.6 # 60%
-    # h_max = 0.9 # 90%
-    # e_theta = 0.3
-    # # Objective Function for Scaling State
-    # f_wmax = d_box[2,0] - w_max*d_box[2,0]
-    # f_wmin = w_min*d_box[2,0] - d_box[2,0]
-    # f_hmax = d_box[3,0] - h_max*d_box[3,0]
-    # f_hmin = h_min*d_box[3,0] - d_box[3,0]
-    # f_theta = abs(d_box[4,0] - r_box[4,0])**2 - e_theta**2
+    k_wmin = 20
+    k_wmax = 20
+    k_hmin = 20
+    k_hmax = 20
+    k_theta = 20
+    w_min = 0.8 # 60% of desired box
+    w_max = 0.9 # 90% of desired box
+    h_min = 0.8 # 60% of desired box
+    h_max = 0.9 # 90% of desired box
+    e_theta = 0.0
+    # Objective Function for Scaling State
+    f_wmax = d_box[2,0] - w_max*r_box[2,0]
+    f_wmin = w_min*r_box[2,0] - d_box[2,0]
+    f_hmax = d_box[3,0] - h_max*r_box[3,0]
+    f_hmin = h_min*r_box[3,0] - d_box[3,0]
+    f_theta = abs(d_box[4,0] - r_box[4,0])**2 - e_theta**2
+    print("f_wmin", f_wmin)
+    print("f_wmax", f_wmax)
+    print("f_hmin", f_hmin)
+    print("f_hmax", f_hmax)
+    print("f_theta", f_theta)
+
     
     # Differentiation of P_S without J_o_I_r
-    # P_S_dot = np.array ([[0],
-    #                      [0],
-    #                      [((k_wmax / (n ** 2)) * ((max(0, f_wmax)) ** (n - 1)) -  (k_wmin / (n ** 2)) * ((max(0, f_wmin)) ** (n - 1)))*
-    #                       ((k_hmax / n) * ((max(0, f_hmax)) ** n) + (k_hmin / n) * ((max(0, f_hmin)) ** n))],
-    #                      [((k_wmax / n) * ((max(0, f_wmax)) ** n) + (k_wmin / n) * ((max(0, f_wmin)) ** n))*
-    #                       ((k_hmax / (n ** 2)) * ((max(0, f_hmax)) ** (n - 1)) -  (k_hmin / (n ** 2)) * ((max(0, f_hmin)) ** (n - 1)))],
-    #                      [(2 * k_theta / (n ** 2)) * ((max(0, f_theta)) ** (n - 1)) * (r_box[4,0] - d_box[4,0])]])
-    
+    P_S_dot = np.array ([[0],
+                         [0],
+                         [((k_wmax / (n ** 2)) * ((max(0, f_wmax)) ** (n - 1)) -  (k_wmin / (n ** 2)) * ((max(0, f_wmin)) ** (n - 1)))*
+                          ((k_hmax / n) * ((max(0, f_hmax)) ** n) + (k_hmin / n) * ((max(0, f_hmin)) ** n))],
+                         [((k_wmax / n) * ((max(0, f_wmax)) ** n) + (k_wmin / n) * ((max(0, f_wmin)) ** n))*
+                          ((k_hmax / (n ** 2)) * ((max(0, f_hmax)) ** (n - 1)) -  (k_hmin / (n ** 2)) * ((max(0, f_hmin)) ** (n - 1)))],
+                         [(2 * k_theta / (n ** 2)) * ((max(0, f_theta)) ** (n - 1)) * (r_box[4,0] - d_box[4,0])]])
+    print("P_S_dot", P_S_dot)
     
     # Epsilon_A
     epsilon_A = [P_R*P_A_dot]
@@ -1496,20 +1505,20 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     # Compute the Jacobian Matrix J_alpha @ J_a @ J_r @ q_dot
     J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints)) @ R_ir6 @ (J_r(actualq))).reshape(1,6)
     J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
-    print("J_alpha", J_alpha(interpoints))
-    print("J_a_n", J_a_n(interpoints))
-    print("J_alpha_a_r", J_alpha_a_r)
-    print("J_alpha_a_r_pinv", J_alpha_a_r_pinv)
+    # print("J_alpha", J_alpha(interpoints))
+    # print("J_a_n", J_a_n(interpoints))
+    # print("J_alpha_a_r", J_alpha_a_r)
+    # print("J_alpha_a_r_pinv", J_alpha_a_r_pinv)
     
     # Total Jacobian and epsilon
-    jacobian = np.concatenate((J_alpha_a_r_pinv, J_o_I_r_pinv), axis=1)
-    print("jacobian:", jacobian)
-    epsilon = np.vstack((epsilon_A, epsilon_S))
-    print("epsilon:", epsilon)
+    # jacobian = np.concatenate((J_alpha_a_r_pinv, J_o_I_r_pinv), axis=1)
+    # print("jacobian:", jacobian)
+    # epsilon = np.vstack((epsilon_A, epsilon_S))
+    # print("epsilon:", epsilon)
     
     # The Controller
-    q_dot = -k *(jacobian @ epsilon)
+    q_dot = -k *(J_o_I_r_pinv @ P_S_dot)
     q_dot[3][0]=0; q_dot[4][0]=0; q_dot[5][0]=0
     print("q_dot",q_dot)
     
-    return q_dot, epsilon, area
+    return q_dot, P_S_dot, area

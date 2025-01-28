@@ -37,8 +37,8 @@ time_plot = [0]
 time_start = time.time()
 q_dot = np.zeros((6, 1))
 q_dot_plot = np.zeros((6, 1))
-epsilon = np.zeros((6, 1))
-epsilon_plot = np.zeros((6, 1))
+epsilon = np.zeros((5, 1))
+epsilon_plot = np.zeros((5, 1))
 actual_p = np.array(state.actual_TCP_pose)
 actual_p_plot = np.array(state.actual_TCP_pose)
 actual_q = np.array(state.actual_q)
@@ -117,14 +117,19 @@ while True:
 				cls_i = cls[i].tolist()
 				
 				if cls_i == 0.0: # Box's detected
-					xyxyn_rev = xyxyn[i].tolist()
+					xyxyn_d = xyxyn[i].tolist()
 					
 					# Shift the desired area to above the detected box
-					xyxyn_rev[1] = xyxyn[i].tolist()[1] - 0.25
-					xyxyn_rev[3] = xyxyn[i].tolist()[3] - 0.25
+					# xyxyn_d[1] = xyxyn[i].tolist()[1] - 0.25
+					# xyxyn_d[3] = xyxyn[i].tolist()[3] - 0.25
+					
+					xyxyn_d[0] = xyxyn_d[0] - 0.05 # For Scaling
+					xyxyn_d[1] = xyxyn_d[1] - 0.40 # For Scaling
+					xyxyn_d[2] = xyxyn_d[2] + 0.05 # For Scaling
+					xyxyn_d[3] = xyxyn_d[3] - 0.30 # For Scaling
 					
 					# Define the desired box
-					desired_box = [*[cls_i], *xyxyn_rev]  # First toy's box detected
+					desired_box = [*[cls_i], *xyxyn_d]  # First toy's box detected
 					
 					# Draw the desired box
 					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
