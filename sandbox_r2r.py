@@ -8,9 +8,9 @@ from r2r_functions import *
 import numpy as np
 
 ## ====================== INITIALIZATION OF TRACKING STUFF ==================================
-OBB = False
-model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
-# model = YOLO("model/yolo11-obb-11-16-watercan.pt") # watercan for OBB object tracking
+OBB = True
+# model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
+model = YOLO("model/yolo11-obb-11-16-watercan.pt") # watercan for OBB object tracking
 # model = YOLO("model/yolo11n.pt") # object tracking with HBB
 
 if OBB==True: # Initialization for OBB case
@@ -101,13 +101,40 @@ while True:
 			
 		if OBB == True:  # ==================== OBB Tracking Case ==============================
 			# Data Extraction from object tracking with OBB format
-			cls = r.obb.cls  # only applied in YOLO OBB model
+			cls = r.obb.cls  # class labels for each OBB box, only applied in YOLO OBB model
 			xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
 			len_cls = len(cls)
 			for i in range(len_cls):
-				xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-				detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
-			
+				cls_i = cls[i].tolist()
+				cls_name = model.names[cls_i]
+				
+				if cls_name == "pot":
+					xyxyxyxyn_d = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+					xyxyxyxyn_d[0] = xyxyxyxyn_d[0] + 0.25
+					xyxyxyxyn_d[1] = xyxyxyxyn_d[1] - 0.25
+					xyxyxyxyn_d[2] = xyxyxyxyn_d[2] + 0.25
+					xyxyxyxyn_d[3] = xyxyxyxyn_d[3] - 0.25
+					xyxyxyxyn_d[4] = xyxyxyxyn_d[4] + 0.25
+					xyxyxyxyn_d[5] = xyxyxyxyn_d[5] - 0.25
+					xyxyxyxyn_d[6] = xyxyxyxyn_d[6] + 0.25
+					xyxyxyxyn_d[7] = xyxyxyxyn_d[7] - 0.25
+					
+					# Define the desired box
+					desired_box = [*[cls_i], *xyxyxyxyn_d]  # Append class with its OBB
+					print("desired_box", cls_name, desired_box)
+					
+					# Draw the desired box
+					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
+									  (int(desired_box[5] * 640), int(desired_box[6] * 480)), (255, 220, 220), 2)
+					cv2.putText(annotated_frame, "Desired Area",
+									(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
+									cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 220, 220), 2)
+				
+				if cls_name == "body":  # water can's body's detected
+					xyxyxyxyn_r = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+					reaching_box = [*[cls_i], *xyxyxyxyn_r]
+					print("reaching_box", cls_name, reaching_box)
+					
 		else:  # ================= HBB Tracking Case ========================================
 			# Data Extraction from object tracking with HBB format
 			cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB

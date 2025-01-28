@@ -72,17 +72,35 @@ while True:
 			len_cls = len(cls)
 			for i in range(len_cls):
 				cls_i = cls[i].tolist()
+				cls_name = model.names[cls_i]
 				
-				if cls_i == 1.0:
-					xyxyn_d = xyxyn[i].tolist()
-					xyxyn_d[1] = xyxyn_d[1] - 0.30
-					xyxyn_d[3] = xyxyn_d[3] - 0.30
-					# Define the desired box
-					desired_box = [*[cls_i], *xyxyn_d]
-					print(desired_box)
+				if cls_name == "pot":
+					xyxyxyxyn_d = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+					xyxyxyxyn_d[0] = xyxyxyxyn_d[0] + 0.25
+					xyxyxyxyn_d[1] = xyxyxyxyn_d[1] - 0.25
+					xyxyxyxyn_d[2] = xyxyxyxyn_d[2] + 0.25
+					xyxyxyxyn_d[3] = xyxyxyxyn_d[3] - 0.25
+					xyxyxyxyn_d[4] = xyxyxyxyn_d[4] + 0.25
+					xyxyxyxyn_d[5] = xyxyxyxyn_d[5] - 0.25
+					xyxyxyxyn_d[6] = xyxyxyxyn_d[6] + 0.25
+					xyxyxyxyn_d[7] = xyxyxyxyn_d[7] - 0.25
 					
-				xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-				detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
+					# Define the desired box
+					desired_box = [*[cls_i], *xyxyxyxyn_d] # Append class with its OBB
+					print("desired_box", desired_box)
+					
+					# Draw the desired box
+					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
+									  (int(desired_box[5] * 640), int(desired_box[6] * 480)), (255, 220, 220), 2)
+					cv2.putText(annotated_frame, "Desired Area",
+									(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
+									cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 220, 220), 2)
+					
+				if cls_name == "spout":  # Toy's detected
+					xyxyxyxyn_r = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+					desired_box = [*[cls_i], *xyxyxyxyn_r]
+
+					
 
 		else:  # HBB
 			# Data Extraction from object tracking with HBB format

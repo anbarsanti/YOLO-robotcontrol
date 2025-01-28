@@ -1414,14 +1414,14 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     
     ## ============================ REACHING STATE ===============================
     # Precompute & Predefine some terms
-    e_cx = 0.05
-    e_cy = 0.05
+    e_cx = 0.05 #HBB
+    e_cy = 0.05 #HBB
     k_cx = 100
     k_cy = 100
     P_r = 1
     f_cx = abs(r_box[0,0] - d_box[0,0]) ** 2 - e_cx ** 2
     f_cy = abs(r_box[1,0] - d_box[1,0]) ** 2 - e_cy ** 2
-    # print("f_cx f_cy", f_cx, f_cy)
+    print("f_cx f_cy", f_cx, f_cy)
     
     # Reaching State --> Energy Function
     P_R = (k_cx / n) * (max(0, f_cx) ** n) + (k_cy / n) * (max(0, f_cy) ** n) + P_r
@@ -1432,7 +1432,7 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
                         [0],
                         [0],
                         [0]]) # dimension (5,1)
-    # print("P_R_dot", P_R_dot)
+    print("P_R_dot", P_R_dot)
     
     # ============================ OVERLAPPING STATE ===============================
     # Precompute & Predefine some terms
@@ -1488,14 +1488,14 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
                          [((k_wmax / n) * ((max(0, f_wmax)) ** n) + (k_wmin / n) * ((max(0, f_wmin)) ** n))*
                           ((k_hmax / (n ** 2)) * ((max(0, f_hmax)) ** (n - 1)) -  (k_hmin / (n ** 2)) * ((max(0, f_hmin)) ** (n - 1)))],
                          [(2 * k_theta / (n ** 2)) * ((max(0, f_theta)) ** (n - 1)) * (r_box[4,0] - d_box[4,0])]])
-    print("P_S_dot", P_S_dot)
+    # print("P_S_dot", P_S_dot)
     
     # Epsilon_A
-    epsilon_A = [P_R*P_A_dot]
+    # epsilon_A = [P_R*P_A_dot]
     # print("epsilon_A:", epsilon_A)
     
     # Epsilon_S (have not yet with P_S_dot variable)
-    epsilon_S = P_A*P_R_dot # + P_S_dot
+    # epsilon_S = P_A*P_R_dot # + P_S_dot
     # print("epsilon_S:", epsilon_S)
     
     # Compute the Jacobian Matrix J_o @ J_I @ J_r @ q_dot
@@ -1503,8 +1503,8 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     J_o_I_r_pinv = np.linalg.pinv(J_o_I_r)
     
     # Compute the Jacobian Matrix J_alpha @ J_a @ J_r @ q_dot
-    J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints)) @ R_ir6 @ (J_r(actualq))).reshape(1,6)
-    J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
+    # J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints)) @ R_ir6 @ (J_r(actualq))).reshape(1,6)
+    # J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
     # print("J_alpha", J_alpha(interpoints))
     # print("J_a_n", J_a_n(interpoints))
     # print("J_alpha_a_r", J_alpha_a_r)
@@ -1517,8 +1517,8 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     # print("epsilon:", epsilon)
     
     # The Controller
-    q_dot = -k *(J_o_I_r_pinv @ P_S_dot)
+    q_dot = -k *(J_o_I_r_pinv @ P_R_dot)
     q_dot[3][0]=0; q_dot[4][0]=0; q_dot[5][0]=0
     print("q_dot",q_dot)
     
-    return q_dot, P_S_dot, area
+    return q_dot, P_R_dot, area
