@@ -10,9 +10,7 @@ from torch.autograd.functional import jacobian
 from matplotlib.path import Path
 import cv2
 from shapely.geometry import Polygon, Point, LineString
-from supervision.tracker.byte_tracker.core import detections2boxes
 from ultralytics import YOLO
-import pyrealsense2 as rs
 import numpy as np
 import cv2
 import csv
@@ -25,6 +23,7 @@ from matplotlib import pyplot as plt
 from min_jerk_planner_translation import PathPlanTranslation
 import time
 import transformations
+import pyrealsense2 as rs
 
 ## ====================== UR5e FUNCTIONS ===============================================
 
@@ -263,7 +262,7 @@ def final_plotting (time_plot, actual_p_plot, actual_q_plot, q_dot_plot, area_pl
     plt.xlabel('Time [sec]')
     file_path = os.path.join(new_folder_path, 'epsilon_2.png')
     plt.savefig(file_path)
-    
+
     plt.figure()
     plt.plot(time_plot, epsilon_plot[2], label="Epsilon_3")
     plt.legend()
@@ -272,7 +271,7 @@ def final_plotting (time_plot, actual_p_plot, actual_q_plot, q_dot_plot, area_pl
     plt.xlabel('Time [sec]')
     file_path = os.path.join(new_folder_path, 'epsilon_3.png')
     plt.savefig(file_path)
-    
+
     plt.figure()
     plt.plot(time_plot, epsilon_plot[3], label="Epsilon_4")
     plt.legend()
@@ -290,7 +289,7 @@ def final_plotting (time_plot, actual_p_plot, actual_q_plot, q_dot_plot, area_pl
     plt.xlabel('Time [sec]')
     file_path = os.path.join(new_folder_path, 'epsilon_5.png')
     plt.savefig(file_path)
-    
+
     plt.figure()
     plt.plot(time_plot, epsilon_plot[5], label="Epsilon_6")
     plt.legend()
@@ -692,9 +691,7 @@ def cxyxy2xywhr(HBB):  # Checked
         (x1, y1): The top-left corner of the box
         (x2, y2): The bottom-right corner of the box
     Return:
-        image feature vector with [x1 y1 x2 y2 x3 y3]
-        x1 y1 and x2 y2 represent the midpoint on the adjacent two sides of the rotating bounding box
-        x3 y3 denotes the center of horizontal bounding box
+        x, y, w, h, 0
     """
     # Calculate
     x = (HBB[1] + HBB[3])/2
@@ -922,15 +919,15 @@ def intersection_area_HBB_xyxy(boxA, boxB):
 
 # Transformation matrix from intelrealsense coordinate sytem to robot coordinate system
 R_ir3 = np.array([[0, -1, 0],
-					  [0, 0, -1],
-					  [1, 0, 0]])
+				[0, 0, -1],
+				[1, 0, 0]])
 
 R_ir6 = np.array([[0, -1, 0, 0, 0, 0],
-					  [0, 0, -1, 0, 0, 0],
-					  [1, 0, 0, 0, 0, 0],
-					  [0, 0, 0, 0, -1, 0],
-					  [0, 0, 0, 0, 0, -1],
-					  [0, 0, 0, 1, 0, 0]])
+                  [0, 0, -1, 0, 0, 0],
+                  [1, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, -1, 0],
+                  [0, 0, 0, 0, 0, -1],
+                  [0, 0, 0, 1, 0, 0]])
 
 R_ir6_mod = np.array([[-1, 0, 0, 0, 0, 0],
                       [0, 0, -1, 0, 0, 0],
@@ -945,15 +942,15 @@ R_ri6_mod = R_ir6_mod.T
 # Transformation matrix from webcam coordinate sytem to robot coordinate system
 # For Simulation Purpose
 R_rw3 = np.array([[0, 0, -1],
-					  [1, 0, 0],
-					  [0, -1, 0]])
+				  [1, 0, 0],
+				  [0, -1, 0]])
 
 R_rw6 = np.array([[0, 0, -1, 0, 0, 0],
-					  [1, 0, 0, 0, 0, 0],
-					  [0, -1, 0, 0, 0, 0],
-					  [0, 0, 0, 0, 0, -1],
-					  [0, 0, 0, 1, 0, 0],
-					  [0, 0, 0, 0, -1, 0]])
+				  [1, 0, 0, 0, 0, 0],
+				  [0, -1, 0, 0, 0, 0],
+				  [0, 0, 0, 0, 0, -1],
+				  [0, 0, 0, 1, 0, 0],
+				  [0, 0, 0, 0, -1, 0]])
 
 R_wr3 = R_rw3.T
 R_wr6 = R_rw6.T
@@ -981,7 +978,7 @@ def J_alpha(intersection_points):
     
     return J_alpha
 
-def J_a(p, Z=0.3):
+def J_a(p, Z):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
@@ -1013,7 +1010,7 @@ def J_a(p, Z=0.3):
     
     return J_a
 
-def J_a_n(p, Z=0.3):
+def J_a_n(p, Z):
     """
 	 Construct the Jacobian matrix that maps intersection points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
@@ -1044,7 +1041,7 @@ def J_a_n(p, Z=0.3):
     
     return J_a
 
-def J_image_n_linear(p, Z=0.3):
+def J_image_n_linear(p, Z):
     """
 	 Normalized Image Jacobian
 	 Image Jacobian matrix that maps a point in image space to linear velocity and angular velocity to cartesian space.
@@ -1062,7 +1059,7 @@ def J_image_n_linear(p, Z=0.3):
                   [0, -1 / Z, y / Z]])
     return J
 
-def J_image_n(p, Z=0.3):
+def J_image_n(p, Z):
     """
 	 Normalized Image Jacobian
 	 Image Jacobian matrix that maps a point in image space to linear velocity and angular velocity to cartesian space.
@@ -1110,7 +1107,7 @@ def J_I(p):
     ]
     return np.array(image_jacobian)
 
-def J_I_n(p, Z=0.3):
+def J_I_n(p, Z):
     """
 	 Return the Jacobian matrix that maps 3 points in image space to linear velocity and angular velocity to cartesian space.
 	 Args:
@@ -1377,7 +1374,7 @@ def J_r(q):
     # Return the Jacobian Matrix
     return jacobian
 
-def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
+def r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual_q, OBB=True):
     """
 	 Construct the controller that consists of 4 steps: (1) Reaching, (2) Overlapping,
 	 (3)Scaling & Screwing, and finally, (4) Desired Overlapping.
@@ -1399,29 +1396,37 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     if OBB:
         r_box = cxyxyxyxy2xywhr(reaching_box) # Conversion for OBB to xywhr format
         d_box = cxyxyxyxy2xywhr(desired_box) # Conversion for OBB to xywhr format
-        p_r_box = cxyxyxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for OBB reaching box
+        r_box_3p = cxyxyxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for OBB reaching box
+
         area = intersection_area_OBB_diy(reaching_box, desired_box)
+        area_of_desired_region = (d_box[2,0]*d_box[3,0]) # Area of desired region
+        area_proportion = (area/area_of_desired_region) # Area of overlapping region / area of desired region
         interpoints = intersection_points_OBB_diy(reaching_box, desired_box)
+
     else:  # HBB
         r_box = cxyxy2xywhr(reaching_box) # Conversion for HBB to xywhr format
-        print("reaching_box", r_box)
         d_box = cxyxy2xywhr(desired_box) # Conversion for HBB to xywhr format
-        print("desired_box", d_box)
-        p_r_box = cxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
-        area = intersection_area_HBB_xyxy(reaching_box, desired_box)
+        r_box_3p = cxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
+
+        area = intersection_area_HBB_xyxy(reaching_box, desired_box) # Area of overlapping region
+        area_of_desired_region = (d_box[2,0]*d_box[3,0]) # Area of desired region
+        area_proportion = (area/area_of_desired_region) # Area of overlapping region / area of desired region
         interpoints = intersection_points_HBB_xyxy(reaching_box, desired_box)
+
 
     
     ## ============================ REACHING STATE ===============================
     # Precompute & Predefine some terms
     e_cx = 0.05 #HBB
     e_cy = 0.05 #HBB
-    k_cx = 100
-    k_cy = 100
+    k_cx = 20
+    k_cy = 20
     P_r = 1
     f_cx = abs(r_box[0,0] - d_box[0,0]) ** 2 - e_cx ** 2
     f_cy = abs(r_box[1,0] - d_box[1,0]) ** 2 - e_cy ** 2
-    print("f_cx f_cy", f_cx, f_cy)
+    # print("reaching_center", r_box[0,0], "and", r_box[1,0])
+    # print("desired_center", d_box[0,0], "and", d_box[1,0])
+    # print("f_cx f_cy", f_cx, f_cy)
     
     # Reaching State --> Energy Function
     P_R = (k_cx / n) * (max(0, f_cx) ** n) + (k_cy / n) * (max(0, f_cy) ** n) + P_r
@@ -1432,29 +1437,28 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
                         [0],
                         [0],
                         [0]]) # dimension (5,1)
-    print("P_R_dot", P_R_dot)
+    # print("P_R_dot", P_R_dot)
     
     # ============================ OVERLAPPING STATE ===============================
     # Precompute & Predefine some terms
-    k_amin = 75
-    k_amax = 75
-    A_dmin = 0.1
-    A_dmax = 0.2
-    f_amin = A_dmin - area
-    f_amax = area - A_dmax
-    if area != 0:
-        print("area", area)
-        print("interpoints: ", interpoints)
-    # print("f_amin", f_amin)
-    # print("f_amax", f_amax)
+
+    k_amin = -20
+    k_amax = +20
+    A_dmin = 0.6
+    A_dmax = 1.00
+    f_amin = A_dmin - area_proportion
+    f_amax = area_proportion - A_dmax
+    print("area:", area)
+    print("area_proportion: ", area_proportion, ", target:", A_dmin, "to", A_dmax)
     
     # Overlapping State --> Energy Function
     P_A = (k_amin / n) * (max(0, f_amin) ** n) + (k_amax / n) * (max(0, f_amax) ** n)
-    print("P_A",P_A)
+    # print("P_A",P_A)
     
     # Differentiation of P_A without J_alpha_a_J_r
-    P_A_dot = ((k_amin / (n ** 2)) * (max(0, f_amin) ** (n - 1)) + (k_amax / (n ** 2)) * (max(0, f_amax) ** (n - 1)))
-    print("P_A_dot", P_A_dot)
+    P_A_dot = np.array((k_amin / (n ** 2)) * (max(0, f_amin) ** (n - 1))
+                         + (k_amax / (n ** 2)) * (max(0, f_amax) ** (n - 1)))
+    # print("P_A_dot", P_A_dot)
 
     # ============================ SCALING STATE ===============================
     k_wmin = 20
@@ -1462,63 +1466,57 @@ def r2r_control(reaching_box, desired_box, actual_q, OBB=True):
     k_hmin = 20
     k_hmax = 20
     k_theta = 20
-    w_min = 0.8 # 60% of desired box
-    w_max = 0.9 # 90% of desired box
-    h_min = 0.8 # 60% of desired box
-    h_max = 0.9 # 90% of desired box
+    w_min = 0.8*d_box[2,0] # 90% of desired box's width
+    w_max = 0.85*d_box[2,0] # 95% of desired box's width
+    h_min = 0.8*d_box[3,0] # 90% of desired box's height
+    h_max = 0.85*d_box[3,0] # 95% of desired box's height
     e_theta = 0.0
     # Objective Function for Scaling State
-    f_wmax = d_box[2,0] - w_max*r_box[2,0]
-    f_wmin = w_min*r_box[2,0] - d_box[2,0]
-    f_hmax = d_box[3,0] - h_max*r_box[3,0]
-    f_hmin = h_min*r_box[3,0] - d_box[3,0]
+    f_wmax = r_box[2,0] - w_max
+    f_wmin = w_min - r_box[2,0]
+    f_hmax = r_box[3,0] - h_max
+    f_hmin = h_min - r_box[3,0]
     f_theta = abs(d_box[4,0] - r_box[4,0])**2 - e_theta**2
-    print("f_wmin", f_wmin)
-    print("f_wmax", f_wmax)
-    print("f_hmin", f_hmin)
-    print("f_hmax", f_hmax)
-    print("f_theta", f_theta)
+    # print("f_theta", f_theta)
 
     
     # Differentiation of P_S without J_o_I_r
     P_S_dot = np.array ([[0],
                          [0],
-                         [((k_wmax / (n ** 2)) * ((max(0, f_wmax)) ** (n - 1)) -  (k_wmin / (n ** 2)) * ((max(0, f_wmin)) ** (n - 1)))*
+                         [((k_wmax / (n ** 2)) * ((max(0, f_wmax)) ** (n - 1)) +  (k_wmin / (n ** 2)) * ((max(0, f_wmin)) ** (n - 1)))*
                           ((k_hmax / n) * ((max(0, f_hmax)) ** n) + (k_hmin / n) * ((max(0, f_hmin)) ** n))],
-                         [((k_wmax / n) * ((max(0, f_wmax)) ** n) + (k_wmin / n) * ((max(0, f_wmin)) ** n))*
+                         [((k_wmax / n) * ((max(0, f_wmax)) ** n) - (k_wmin / n) * ((max(0, f_wmin)) ** n))*
                           ((k_hmax / (n ** 2)) * ((max(0, f_hmax)) ** (n - 1)) -  (k_hmin / (n ** 2)) * ((max(0, f_hmin)) ** (n - 1)))],
                          [(2 * k_theta / (n ** 2)) * ((max(0, f_theta)) ** (n - 1)) * (r_box[4,0] - d_box[4,0])]])
-    # print("P_S_dot", P_S_dot)
     
     # Epsilon_A
-    # epsilon_A = [P_R*P_A_dot]
-    # print("epsilon_A:", epsilon_A)
+    epsilon_A = [P_R*P_A_dot]
     
-    # Epsilon_S (have not yet with P_S_dot variable)
-    # epsilon_S = P_A*P_R_dot # + P_S_dot
-    # print("epsilon_S:", epsilon_S)
+    # Epsilon_S
+    epsilon_S = P_A*P_R_dot + P_S_dot
     
     # Compute the Jacobian Matrix J_o @ J_I @ J_r @ q_dot
-    J_o_I_r = (J_o(p_r_box)) @ (J_I_n(p_r_box)) @ R_ir6 @ (J_r(actualq))
+    J_o_I_r = (J_o(r_box_3p)) @ (J_I_n(r_box_3p, 0.7)) @ R_ir6 @ (J_r(actualq))
     J_o_I_r_pinv = np.linalg.pinv(J_o_I_r)
     
     # Compute the Jacobian Matrix J_alpha @ J_a @ J_r @ q_dot
-    # J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints)) @ R_ir6 @ (J_r(actualq))).reshape(1,6)
-    # J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
-    # print("J_alpha", J_alpha(interpoints))
-    # print("J_a_n", J_a_n(interpoints))
-    # print("J_alpha_a_r", J_alpha_a_r)
-    # print("J_alpha_a_r_pinv", J_alpha_a_r_pinv)
+    J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints, desired_depth)) @ R_ir6 @ (J_r(actualq))).reshape(1,6)
+    J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
     
-    # Total Jacobian and epsilon
-    # jacobian = np.concatenate((J_alpha_a_r_pinv, J_o_I_r_pinv), axis=1)
-    # print("jacobian:", jacobian)
-    # epsilon = np.vstack((epsilon_A, epsilon_S))
-    # print("epsilon:", epsilon)
+    # Total Jacobian
+    jacobian = np.concatenate((J_alpha_a_r_pinv, J_o_I_r_pinv), axis=1)
+
+    # Epsilon
+    epsilon = np.vstack((epsilon_A, epsilon_S)) # Overall integration
+    # epsilon = P_R_dot # Reaching State Test
+    # epsilon = P_A_dot.reshape(1,1) # Overlapping State Test
+    # epsilon = P_S_dot # Scaling State test
+    print("epsilon:", epsilon)
     
     # The Controller
-    q_dot = -k *(J_o_I_r_pinv @ P_R_dot)
+    q_dot = -k *(jacobian @ epsilon)
+    # q_dot = -k * (J_o_I_r_pinv @ epsilon)
     q_dot[3][0]=0; q_dot[4][0]=0; q_dot[5][0]=0
     print("q_dot",q_dot)
     
-    return q_dot, P_R_dot, area
+    return q_dot, epsilon, area

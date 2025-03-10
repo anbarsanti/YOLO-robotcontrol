@@ -9,8 +9,8 @@ import numpy as np
 
 ## ====================== INITIALIZATION OF TRACKING STUFF ==================================
 OBB = True
-# model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
-model = YOLO("model/yolo11-obb-11-16-watercan.pt") # watercan for OBB object tracking
+# model = YOLO("model/yolo11-hbb-toy-25-02-24.pt") # toys for HBB object tracking
+model = YOLO("model/yolo11-obb-25-03-04-watercan_best.pt") # watercan for OBB object tracking
 # model = YOLO("model/yolo11n.pt") # object tracking with HBB
 
 if OBB==True: # Initialization for OBB case
@@ -21,7 +21,7 @@ else: # Initialization for HBB case
 	reaching_box = [0, 0, 0, 0, 0]
 
 ## ========================= INITIALIZATION OF ROBOT COMMUNICATION  =========================
-ROBOT_HOST = "10.149.230.168" # in robotics lab
+ROBOT_HOST = "10.149.230.1" # in robotics lab
 # ROBOT_HOST = "192.168.18.13"  # virtual machine in from linux host
 ROBOT_PORT = 30004
 config_filename = "control_loop_configuration.xml"
@@ -37,8 +37,8 @@ time_plot = [0]
 time_start = time.time()
 q_dot = np.zeros((6, 1))
 q_dot_plot = np.zeros((6, 1))
-epsilon = np.zeros((5, 1))
-epsilon_plot = np.zeros((5, 1))
+epsilon = np.zeros((6, 1))
+epsilon_plot = np.zeros((6, 1))
 actual_p = np.array(state.actual_TCP_pose)
 actual_p_plot = np.array(state.actual_TCP_pose)
 actual_q = np.array(state.actual_q)
@@ -49,7 +49,7 @@ x_desired = [[0],[0]]
 ## =========================  UR5E MOVE TO INITIAL POSITION =========================
 con, state, watchdog, setp = UR5e_start(con, state, watchdog, setp)
 
-# ## ======================= TRACKING STARTS FROM INTEL REALSENSE==================================
+## ======================= TRACKING STARTS FROM INTEL REALSENSE==================================
 
 # Check RealSense Camera Connection
 ctx = rs.context()
@@ -73,12 +73,12 @@ cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 pipe.start(cfg)
 
 # Wait until the realsense stable
-while time.time() - time_start < 6:
+while time.time() - time_start < 8:
 	frame = pipe.wait_for_frames()
 	color_frame = frame.get_color_frame()
 	# Convert images to numpy arraysq
 	color_image = np.asanyarray(color_frame.get_data())
-	
+
 	# Run YOLO tracking on the frame
 	results = model.track(color_image, stream=True, show=True, persist=True,
 								 tracker='bytetrack.yaml')  # Tracking with byteTrack
@@ -87,18 +87,19 @@ while time.time() - time_start < 6:
 while True:
 	frame = pipe.wait_for_frames()
 	color_frame = frame.get_color_frame()
-	
+	depth_frame = frame.get_depth_frame()
+
 	# Convert images to numpy arrays
 	color_image = np.asanyarray(color_frame.get_data())
-	
+
 	# Run YOLO tracking on the frame
 	results = model.track(color_image, stream=True, show=True, persist=True,
 								 tracker='bytetrack.yaml')  # Tracking with byteTrack
-	
+
 	# Process, extract, and visualize the results, source: https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
 	for r in results:
 		annotated_frame = r.plot()
-			
+
 		if OBB == True:  # ==================== OBB Tracking Case ==============================
 			# Data Extraction from object tracking with OBB format
 			cls = r.obb.cls  # class labels for each OBB box, only applied in YOLO OBB model
@@ -107,34 +108,52 @@ while True:
 			for i in range(len_cls):
 				cls_i = cls[i].tolist()
 				cls_name = model.names[cls_i]
-				
+
 				if cls_name == "pot":
 					xyxyxyxyn_d = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-					xyxyxyxyn_d[0] = xyxyxyxyn_d[0] + 0.25
-					xyxyxyxyn_d[1] = xyxyxyxyn_d[1] - 0.25
-					xyxyxyxyn_d[2] = xyxyxyxyn_d[2] + 0.25
-					xyxyxyxyn_d[3] = xyxyxyxyn_d[3] - 0.25
-					xyxyxyxyn_d[4] = xyxyxyxyn_d[4] + 0.25
-					xyxyxyxyn_d[5] = xyxyxyxyn_d[5] - 0.25
-					xyxyxyxyn_d[6] = xyxyxyxyn_d[6] + 0.25
-					xyxyxyxyn_d[7] = xyxyxyxyn_d[7] - 0.25
-					
+
+					# Shift the desired area to above the detected box
+					xyxyxyxyn_d[0] = xyxyxyxyn_d[0] + 0.20
+					xyxyxyxyn_d[1] = xyxyxyxyn_d[1] - 0.30
+					xyxyxyxyn_d[2] = xyxyxyxyn_d[2] + 0.20
+					xyxyxyxyn_d[3] = xyxyxyxyn_d[3] - 0.30
+					xyxyxyxyn_d[4] = xyxyxyxyn_d[4] + 0.20
+					xyxyxyxyn_d[5] = xyxyxyxyn_d[5] - 0.30
+					xyxyxyxyn_d[6] = xyxyxyxyn_d[6] + 0.20
+					xyxyxyxyn_d[7] = xyxyxyxyn_d[7] - 0.30
+
 					# Define the desired box
 					desired_box = [*[cls_i], *xyxyxyxyn_d]  # Append class with its OBB
-					print("desired_box", cls_name, desired_box)
-					
+
+					# Desired box's depth
+					x_d = int((xyxyxyxyn_d[0]+xyxyxyxyn_d[2])*320)
+					y_d = int((xyxyxyxyn_d[1]+xyxyxyxyn_d[3])*240)
+					if depth_frame:
+						desired_depth = depth_frame.get_distance(x_d, y_d)
+					else:
+						desired_depth = 0.75
+
 					# Draw the desired box
 					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
 									  (int(desired_box[5] * 640), int(desired_box[6] * 480)), (255, 220, 220), 2)
 					cv2.putText(annotated_frame, "Desired Area",
 									(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
 									cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 220, 220), 2)
-				
-				if cls_name == "body":  # water can's body's detected
+
+				if cls_name == "water can":  # water can is detected
 					xyxyxyxyn_r = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+
+					# Define the reaching box
 					reaching_box = [*[cls_i], *xyxyxyxyn_r]
-					print("reaching_box", cls_name, reaching_box)
-					
+					print("reaching_box", reaching_box)
+					# Reaching box's depth'
+					x_r = int((xyxyxyxyn_r[0] + xyxyxyxyn_r[2]) * 320)
+					y_r = int((xyxyxyxyn_r[1] + xyxyxyxyn_r[3]) * 240)
+					# if depth_frame:
+					# 	reaching_depth = depth_frame.get_distance(x_r, y_r)
+					# else:
+					# 	reaching_depth = 0.75
+
 		else:  # ================= HBB Tracking Case ========================================
 			# Data Extraction from object tracking with HBB format
 			cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
@@ -142,32 +161,46 @@ while True:
 			len_cls = len(cls)
 			for i in range(len_cls):
 				cls_i = cls[i].tolist()
-				
+
 				if cls_i == 0.0: # Box's detected
 					xyxyn_d = xyxyn[i].tolist()
-					
+
 					# Shift the desired area to above the detected box
-					# xyxyn_d[1] = xyxyn[i].tolist()[1] - 0.25
-					# xyxyn_d[3] = xyxyn[i].tolist()[3] - 0.25
-					
-					xyxyn_d[0] = xyxyn_d[0] - 0.05 # For Scaling
-					xyxyn_d[1] = xyxyn_d[1] - 0.40 # For Scaling
-					xyxyn_d[2] = xyxyn_d[2] + 0.05 # For Scaling
-					xyxyn_d[3] = xyxyn_d[3] - 0.30 # For Scaling
-					
+					# xyxyn_d[0] = xyxyn_d[0] - 0.1 # For Scaling
+					xyxyn_d[1] = xyxyn_d[1] - 0.20 # For Scaling
+					# xyxyn_d[2] = xyxyn_d[2] + 0.1 # For Scaling
+					xyxyn_d[3] = xyxyn_d[3] - 0.20 # For Scaling
+
 					# Define the desired box
 					desired_box = [*[cls_i], *xyxyn_d]  # First toy's box detected
-					
+
+					# Desired box's depth
+					x_d = int((xyxyn_d[0]+xyxyn_d[2])*320)
+					y_d = int((xyxyn_d[1]+xyxyn_d[3])*240)
+					if depth_frame:
+						desired_depth = depth_frame.get_distance(x_d, y_d)
+					else:
+						desired_depth = 0.75
+
 					# Draw the desired box
 					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
 									  (int(desired_box[3] * 640), int(desired_box[4] * 480)), (255, 255, 255), 2)
 					cv2.putText(annotated_frame, "Desired Area",
 									(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
 									cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
-				
+
 				if cls_i == 1.0: # Toy's detected
+					xyxyn_r = xyxyn[i].tolist()
 					reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
-				
+
+					# Reaching box's depth'
+					x_r = int((xyxyn_r[0]+xyxyn_r[2])*320)
+					y_r = int((xyxyn_r[1]+xyxyn_r[3])*240)
+					if depth_frame:
+						reaching_depth = depth_frame.get_distance(x_r, y_r)
+					else:
+						reaching_depth = 0.75
+
 			## ==================== UR5E =========================================
 			# Send the q_dot to UR5e
 			list_to_setp(setp, q_dot)
@@ -177,7 +210,7 @@ while True:
 			actual_q = np.array(state.actual_q) # dimension (1,6)qqqq
 
 			## ==================== CONTROLLER =========================================
-			q_dot, epsilon, area = r2r_control(desired_box, reaching_box, actual_q, OBB=OBB)
+			q_dot, epsilon, area = r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual_q, OBB=OBB)
 
 			## =================== SAVE FOR PLOTTING AND ANALYSIS ===================================
 			time_plot.append(time.time() - time_start)
@@ -186,15 +219,19 @@ while True:
 			actual_p_plot = np.vstack((actual_p_plot, actual_p))
 			actual_q_plot = np.vstack((actual_q_plot, actual_q))
 			q_dot_plot = np.append(q_dot_plot, q_dot, axis=1)
-			
+
 		# Display the annotated frame
-		cv2.imshow("YOLqOv11 Tracking - Realsense", annotated_frame)
-	
+		cv2.imshow("YOLOv11 Tracking - Realsense", annotated_frame)
+
 	# Break the loop if 'q' is pressed
 	if cv2.waitKey(1) & 0xFF == ord('q'):
 		break
 
-# Stop Streaming
+# # Release resources (Webcam)
+# cap.release()
+# cv2.destroyAllWindows()
+
+# Stop Streaming (IntelRealsense)
 pipe.stop()
 cv2.destroyAllWindows()
 

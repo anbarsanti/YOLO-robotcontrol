@@ -9,8 +9,8 @@ import numpy as np
 
 ## ====================== INITIALIZATION OF TRACKING STUFF ==================================
 OBB = True
-# model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
-model = YOLO("model/yolo11-obb-11-16-watercan.pt") # watercan for OBB object tracking
+# model = YOLO("model/yolo11-hbb-toy-25-02-24.pt") # toys for HBB object tracking
+model = YOLO("model/yolo11-obb-25-03-04-watercan_best.pt") # watercan for OBB object tracking
 # model = YOLO("model/yolo11n.pt") # object tracking with HBB
 
 # if OBB==True: # Initialization for OBB case
@@ -20,8 +20,8 @@ model = YOLO("model/yolo11-obb-11-16-watercan.pt") # watercan for OBB object tra
 # 	desired_box = [0, 0, 0, 0, 0]
 # 	reaching_box = [0, 0, 0, 0, 0]
 
-## ======================================================== REALSENSE TESTING =============================================================
-#
+### ======================================================== REALSENSE TESTING =============================================================
+
 # Check RealSense Camera Connection
 ctx = rs.context()
 devices = ctx.query_devices()
@@ -73,34 +73,53 @@ while True:
 			for i in range(len_cls):
 				cls_i = cls[i].tolist()
 				cls_name = model.names[cls_i]
-				
-				if cls_name == "pot":
+
+				if cls_name == "pot": # Pot's detected
 					xyxyxyxyn_d = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-					xyxyxyxyn_d[0] = xyxyxyxyn_d[0] + 0.25
-					xyxyxyxyn_d[1] = xyxyxyxyn_d[1] - 0.25
-					xyxyxyxyn_d[2] = xyxyxyxyn_d[2] + 0.25
-					xyxyxyxyn_d[3] = xyxyxyxyn_d[3] - 0.25
-					xyxyxyxyn_d[4] = xyxyxyxyn_d[4] + 0.25
-					xyxyxyxyn_d[5] = xyxyxyxyn_d[5] - 0.25
-					xyxyxyxyn_d[6] = xyxyxyxyn_d[6] + 0.25
-					xyxyxyxyn_d[7] = xyxyxyxyn_d[7] - 0.25
-					
+
+					# Shift the desired area to above the detected box
+					xyxyxyxyn_d[0] = xyxyxyxyn_d[0] + 0.20
+					xyxyxyxyn_d[1] = xyxyxyxyn_d[1] - 0.30
+					xyxyxyxyn_d[2] = xyxyxyxyn_d[2] + 0.20
+					xyxyxyxyn_d[3] = xyxyxyxyn_d[3] - 0.30
+					xyxyxyxyn_d[4] = xyxyxyxyn_d[4] + 0.20
+					xyxyxyxyn_d[5] = xyxyxyxyn_d[5] - 0.30
+					xyxyxyxyn_d[6] = xyxyxyxyn_d[6] + 0.20
+					xyxyxyxyn_d[7] = xyxyxyxyn_d[7] - 0.30
+
 					# Define the desired box
 					desired_box = [*[cls_i], *xyxyxyxyn_d] # Append class with its OBB
-					print("desired_box", desired_box)
-					
+					print("desired_box: ", desired_box)
+
+					# Desired box's depth
+					x_d = int((xyxyxyxyn_d[0]+xyxyxyxyn_d[2])*320)
+					y_d = int((xyxyxyxyn_d[1]+xyxyxyxyn_d[3])*240)
+					if depth_frame:
+						desired_depth = depth_frame.get_distance(x_d, y_d)
+					else:
+						desired_depth = 0.75
+
 					# Draw the desired box
 					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
 									  (int(desired_box[5] * 640), int(desired_box[6] * 480)), (255, 220, 220), 2)
 					cv2.putText(annotated_frame, "Desired Area",
 									(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
 									cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 220, 220), 2)
-					
-				if cls_name == "spout":  # Toy's detected
-					xyxyxyxyn_r = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-					desired_box = [*[cls_i], *xyxyxyxyn_r]
 
-					
+				if cls_name == "water can":  # water can is detected
+					xyxyxyxyn_r = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+
+					# Define the reaching box
+					reaching_box = [*[cls_i], *xyxyxyxyn_r]
+					print("reaching_box: ", reaching_box)
+
+					# Reaching box's depth'
+					x_r = int((xyxyxyxyn_r[0]+xyxyxyxyn_r[2])*320)
+					y_r = int((xyxyxyxyn_r[1]+xyxyxyxyn_r[3])*240)
+					# if depth_frame:
+					# 	reaching_depth = depth_frame.get_distance(x_r, y_r)
+					# else:
+					# 	reaching_depth = 0.75
 
 		else:  # HBB
 			# Data Extraction from object tracking with HBB format
@@ -114,17 +133,21 @@ while True:
 					xyxyn_d = xyxyn[i].tolist()
 
 					# Shift the desired area to above the detected box
-					xyxyn_d[0] = xyxyn_d[0] - 0.05
-					xyxyn_d[1] = xyxyn_d[1] - 0.40
-					xyxyn_d[2] = xyxyn_d[2] + 0.05
-					xyxyn_d[3] = xyxyn_d[3] - 0.30
+					# xyxyn_d[0] = xyxyn_d[0] - 0.05
+					xyxyn_d[1] = xyxyn_d[1] - 0.20
+					# xyxyn_d[2] = xyxyn_d[2] + 0.05
+					xyxyn_d[3] = xyxyn_d[3] - 0.20
 
 					# Define the desired box
 					desired_box = [*[cls_i], *xyxyn_d]  # First toy's box detected
+
+					# Desired box's depth
 					x_d = int((xyxyn_d[0]+xyxyn_d[2])*320)
 					y_d = int((xyxyn_d[1]+xyxyn_d[3])*240)
-					desired_box_depth = depth_frame.get_distance(x_d, y_d)
-					print("desired_box_depth", desired_box_depth)
+					if depth_frame:
+						desired_depth = depth_frame.get_distance(x_d, y_d)
+					else:
+						desired_depth = 0.75
 
 					# Draw the desired box
 					cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
@@ -135,11 +158,19 @@ while True:
 
 				if cls_i == 1.0:  # Toy's detected
 					xyxyn_r = xyxyn[i].tolist()
+
+					# Define the reaching box
 					reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
+
+					# Reaching box's depth'
 					x_r = int((xyxyn_r[0]+xyxyn_r[2])*320)
 					y_r = int((xyxyn_r[1]+xyxyn_r[3])*240)
-					reaching_depth = depth_frame.get_distance(x_r, y_r)
-					print("toy_depth", reaching_depth)
+					# if depth_frame:
+					# 	reaching_depth = depth_frame.get_distance(x_r, y_r)
+					# else:
+					# 	reaching_depth = 0.75
+
+
 
 		# Display the annotated frame
 		cv2.imshow("YOLOv11 OBB Inference - Realsense Camera", annotated_frame)
@@ -151,15 +182,11 @@ while True:
 # Stop Streaming
 pipe.stop()
 cv2.destroyAllWindows()
-
-## ======================================================== WEBCAM TESTING ==============================================================
+#
+# ## ======================================================== WEBCAM TESTING ==============================================================
 # # Open the camera
 # cap = cv2.VideoCapture(0)  # Use 0 for the default camera, or change to a specific camera index if needed
 # # 0 = web camera, 2 = depth camera
-#
-# # Set the desired frame width and height
-# cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-# cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 #
 # while cap.isOpened():
 # 	success, frame = cap.read()
@@ -177,42 +204,86 @@ cv2.destroyAllWindows()
 # 			# https://docs.ultralytics.com/reference/engine/results/#ultralytics.engine.results.Results
 #
 # 			if OBB == True:
-# 				# Data Extraction from object tracking with OBB format
-# 				cls = r.obb.cls  # only applied in YOLO OBB model
+# 			# Data Extraction from object tracking with OBB format
+# 				cls = r.obb.cls  # class labels for each OBB box, only applied in YOLO OBB model
 # 				xyxyxyxyn = r.obb.xyxyxyxyn  # Normalized [x1, y1, x2, y2, x3, y3, x4, y4] OBBs. only applied in YOLO OBB model
 # 				len_cls = len(cls)
 # 				for i in range(len_cls):
-# 					xyxyxyxyn_flatten = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
-# 					detected_box = [*[(cls[i].tolist())], *(xyxyxyxyn_flatten)]  # Append class with its OBB
+# 					cls_i = cls[i].tolist()
+# 					cls_name = model.names[cls_i]
+#
+# 					if cls_name == "pot":
+# 						xyxyxyxyn_d = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+# 						xyxyxyxyn_d[0] = xyxyxyxyn_d[0] + 0.25
+# 						xyxyxyxyn_d[1] = xyxyxyxyn_d[1] - 0.25
+# 						xyxyxyxyn_d[2] = xyxyxyxyn_d[2] + 0.25
+# 						xyxyxyxyn_d[3] = xyxyxyxyn_d[3] - 0.25
+# 						xyxyxyxyn_d[4] = xyxyxyxyn_d[4] + 0.25
+# 						xyxyxyxyn_d[5] = xyxyxyxyn_d[5] - 0.25
+# 						xyxyxyxyn_d[6] = xyxyxyxyn_d[6] + 0.25
+# 						xyxyxyxyn_d[7] = xyxyxyxyn_d[7] - 0.25
+#
+# 						# Define the desired box
+# 						desired_box = [*[cls_i], *xyxyxyxyn_d] # Append class with its OBB
+# 						print("desired_box", desired_box)
+#
+# 						# Draw the desired box
+# 						cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
+# 										  (int(desired_box[5] * 640), int(desired_box[6] * 480)), (255, 220, 220), 2)
+# 						cv2.putText(annotated_frame, "Desired Area",
+# 										(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
+# 										cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 220, 220), 2)
+#
+# 					if cls_name == "spout":  # Toy's detected
+# 						xyxyxyxyn_r = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
+# 						desired_box = [*[cls_i], *xyxyxyxyn_r]
 #
 # 			else:  # HBB
-# 				# Data Extraction from object tracking with HBB format
+# 			# Data Extraction from object tracking with HBB format
 # 				cls = r.boxes.cls  # Class labels for each HBB box. can't be applied in OBB
 # 				xyxyn = r.boxes.xyxyn  # Normalized [x1, y1, x2, y2] horizontal boxes relative to orig_shape. can't be applied in OBB
 # 				len_cls = len(cls)
 # 				for i in range(len_cls):
 # 					cls_i = cls[i].tolist()
 #
-# 					if cls_i == 0.0: # Box's detected
-# 						xyxyn_rev = xyxyn[i].tolist()
+# 					if cls_i == 0.0:  # Box's detected
+# 						xyxyn_d = xyxyn[i].tolist()
 #
 # 						# Shift the desired area to above the detected box
-# 						xyxyn_rev[1] = xyxyn_rev[1] - 0.38
-# 						xyxyn_rev[3] = xyxyn_rev[3] - 0.38
+# 						# xyxyn_d[0] = xyxyn_d[0] - 0.05
+# 						xyxyn_d[1] = xyxyn_d[1] - 0.25
+# 						# xyxyn_d[2] = xyxyn_d[2] + 0.05
+# 						xyxyn_d[3] = xyxyn_d[3] - 0.25
 #
 # 						# Define the desired box
-# 						desired_box = [*[cls_i], *xyxyn_rev]  # First toy's box detected
+# 						desired_box = [*[cls_i], *xyxyn_d]  # First toy's box detected
+# 						d_box = cxyxy2xywhr(desired_box)  # Conversion for HBB to xywhr format
+# 						print("desired_box", d_box)
+#
+# 						# x_d = int((xyxyn_d[0]+xyxyn_d[2])*320)
+# 						# y_d = int((xyxyn_d[1]+xyxyn_d[3])*240)
+# 						# desired_box_depth = depth_frame.get_distance(x_d, y_d)
+# 						# print("desired_box_depth", desired_box_depth)
 #
 # 						# Draw the desired box
 # 						cv2.rectangle(annotated_frame, (int(desired_box[1] * 640), int(desired_box[2] * 480)),
-# 										  (int(desired_box[3] * 640), int(desired_box[4] * 480)), (255, 130, 130), 2)
+# 										  (int(desired_box[3] * 640), int(desired_box[4] * 480)), (255, 220, 220), 2)
 # 						cv2.putText(annotated_frame, "Desired Area",
 # 										(int(desired_box[1] * 640), int(desired_box[2] * 480) - 10),
-# 										cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 130, 130), 2)
-#
+# 										cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 220, 220), 2)
 #
 # 					if cls_i == 1.0:  # Toy's detected
+# 						xyxyn_r = xyxyn[i].tolist()
 # 						reaching_box = [*[cls_i], *(xyxyn[i].tolist())]
+# 						r_box = cxyxy2xywhr(reaching_box)  # Conversion for HBB to xywhr format
+# 						print("reaching_box", r_box)
+#
+#
+#
+# 						# x_r = int((xyxyn_r[0]+xyxyn_r[2])*320)
+# 						# y_r = int((xyxyn_r[1]+xyxyn_r[3])*240)
+# 						# reaching_depth = depth_frame.get_distance(x_r, y_r)
+# 						# print("toy_depth", reaching_depth)
 #
 # 			# Display the annotated frame
 # 			cv2.imshow("YOLOv11 Tracking - Webcam", annotated_frame)
@@ -225,6 +296,7 @@ cv2.destroyAllWindows()
 #
 # # Release resources
 # cap.release()
+# out.release()
 # cv2.destroyAllWindows()
 
 ## ===================================================  HBB TESTING ===================================================
@@ -243,7 +315,13 @@ hbbF_xyxy = np.array([0, 0.6, 0.4, 0.9, 0.6])
 # # print("area HBB D and F", intersection_area_HBB_xyxy(hbbD_xyxy, hbbF_xyxy))
 # # print("area HBB E and F", intersection_area_HBB_xyxy(hbbE_xyxy, hbbF_xyxy))
 #
-# print("hbbD in xywhr format", cxyxy2xywhr(hbbD_xyxy))
+a = cxyxy2xywhr(hbbD_xyxy)
+print("hbbD in xywhr format", a)
+print(a[0,0])
+print(a[1,0])
+print(a[2,0])
+print(a[3,0])
+
 # print("hbbE in xywhr format", cxyxy2xywhr(hbbE_xyxy))
 # print("hbbF in xywhr format", cxyxy2xywhr(hbbF_xyxy))
 # #
@@ -413,21 +491,22 @@ q = np.array([0.23, 0.91, 0.22, 0.12, 0.42, 0.74]).reshape((-1,1))
 
 
 # ## =================== JACOBIAN AREA TESTING =========================
-interpoints=  [[0.6435770392417908, 0.4247528314590454], [0.6583267450332642, 0.4247528314590454], [0.6583267450332642, 0.43561187386512756], [0.6435770392417908, 0.43561187386512756]]
-area = 0.00016016768066684506
+# interpoints=  [[0.6435770392417908, 0.4247528314590454], [0.6583267450332642, 0.4247528314590454], [0.6583267450332642, 0.43561187386512756], [0.6435770392417908, 0.43561187386512756]]
+# area = 0.00016016768066684506
+#
+# J = [[-0.66132, -0.28098, -0.71201, -0.75357,  0.21018, -0.51265]]
+# print ("J_pinv", np.linalg.pinv(J))
+#
+# J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints)) @ (R_ir6) @ (J_r(q))).reshape(1,6)
+# J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
+# print(J_alpha_a_r_pinv)
 
-J = [[-0.66132, -0.28098, -0.71201, -0.75357,  0.21018, -0.51265]]
-print ("J_pinv", np.linalg.pinv(J))
-
-J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints)) @ (R_ir6) @ (J_r(q))).reshape(1,6)
-J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
-print(J_alpha_a_r_pinv)
-
-neg_interpoints = list(map(lambda num: -num, interpoints))
-print("neg_interpoints", neg_interpoints)
+# neg_interpoints = list(map(lambda num: -num, interpoints))
+# print("neg_interpoints", neg_interpoints)
 
 
-
+desired_box = [0.0, 0.28069692850112915, 0.5109838843345642, 0.5115841627120972, 0.7497942447662354]
+reaching_box = [1.0, 0.18040941655635834, 0.4995628595352173, 0.33517003059387207, 0.6662081480026245]
 
 
 
