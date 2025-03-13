@@ -17,8 +17,8 @@ import time
 from r2r_functions import *
 
 ## ====================== ROBOT COMMUNICATION STUFF ==================================
-# ROBOT_HOST = "10.149.230.168" # in robotics lab
-ROBOT_HOST = "192.168.18.14" # virtual machine in from linux host
+ROBOT_HOST = "10.149.230.168" # in robotics lab
+# ROBOT_HOST = "192.168.18.14" # virtual machine in from linux host
 ROBOT_PORT = 30004
 config_filename = "control_loop_configuration.xml"
 FREQUENCY = 500

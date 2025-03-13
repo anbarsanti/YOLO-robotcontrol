@@ -31,8 +31,8 @@ FREQUENCY = 1000 # send data in 500 Hz instead of default 125Hz
 con, state, watchdog, setp = UR5e_init(ROBOT_HOST, ROBOT_PORT, FREQUENCY, config_filename)
 
 # Initialization of Plotting Variable
-area = 0
-area_plot = [0]
+area_proportion = 0
+area_proportion_plot = [0]
 time_plot = [0]
 time_start = time.time()
 q_dot = np.zeros((6, 1))
@@ -112,7 +112,7 @@ while True:
 				if cls_name == "pot":
 					xyxyxyxyn_d = (np.array((xyxyxyxyn[i].tolist())).reshape(1, 8).tolist())[0]  # Flatten the xyxyxyxy
 
-					# Shift the desired area to above the detected box
+					# Shift the desired region to above the detected box
 					xyxyxyxyn_d[0] = xyxyxyxyn_d[0] + 0.20
 					xyxyxyxyn_d[1] = xyxyxyxyn_d[1] - 0.30
 					xyxyxyxyn_d[2] = xyxyxyxyn_d[2] + 0.20
@@ -124,6 +124,11 @@ while True:
 
 					# Define the desired box
 					desired_box = [*[cls_i], *xyxyxyxyn_d]  # Append class with its OBB
+
+					# Calculate the area of desired region
+					desired_vertices = convert_OBB_to_vertices(desired_box)
+					area_desired = Polygon(desired_vertices).area
+					print("area_desired = ", area_desired)
 
 					# Desired box's depth
 					x_d = int((xyxyxyxyn_d[0]+xyxyxyxyn_d[2])*320)
@@ -146,6 +151,12 @@ while True:
 					# Define the reaching box
 					reaching_box = [*[cls_i], *xyxyxyxyn_r]
 					print("reaching_box", reaching_box)
+
+					# Calculate the area of reaching box
+					reaching_vertices = convert_OBB_to_vertices(reaching_box)
+					area_reaching = Polygon(reaching_vertices).area
+					print("area_reaching = ", area_reaching)
+
 					# Reaching box's depth'
 					x_r = int((xyxyxyxyn_r[0] + xyxyxyxyn_r[2]) * 320)
 					y_r = int((xyxyxyxyn_r[1] + xyxyxyxyn_r[3]) * 240)
@@ -210,11 +221,11 @@ while True:
 			actual_q = np.array(state.actual_q) # dimension (1,6)qqqq
 
 			## ==================== CONTROLLER =========================================
-			q_dot, epsilon, area = r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual_q, OBB=OBB)
+			q_dot, epsilon, area_proportion = r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual_q, OBB=OBB)
 
 			## =================== SAVE FOR PLOTTING AND ANALYSIS ===================================
 			time_plot.append(time.time() - time_start)
-			area_plot.append(area)
+			area_proportion_plot.append(area_proportion)
 			epsilon_plot = np.append(epsilon_plot, epsilon, axis=1)
 			actual_p_plot = np.vstack((actual_p_plot, actual_p))
 			actual_q_plot = np.vstack((actual_q_plot, actual_q))
@@ -241,4 +252,4 @@ con.send_pause()
 con.disconnect()
 
 ## =========================  FINAL PLOTTING ==================================================
-final_plotting (time_plot, actual_p_plot, actual_q_plot, q_dot_plot, area_plot, epsilon_plot)
+final_plotting (time_plot, actual_p_plot, actual_q_plot, q_dot_plot, area_plot, area_reaching_plot, area_desired_plot, epsilon_plot)

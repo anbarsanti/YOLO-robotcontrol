@@ -10,7 +10,7 @@ import numpy as np
 
 ## ====================== INITIALIZATION OF TRACKING STUFF ==================================
 OBB = False
-model = YOLO("model/yolo11-hbb-toy-12-01.pt") # toys for HBB object tracking
+model = YOLO("model/yolo11-hbb-toy-25-02-24.pt") # toys for HBB object tracking
 # model = YOLO("model/yolo11-obb-11-16-watercan.pt") # watercan for OBB object tracking
 # model = YOLO("model/yolo11n.pt") # object tracking with HBB
 
@@ -22,9 +22,8 @@ else: # Initialization for HBB case
 	reaching_box = [0, 0, 0, 0, 0]
 
 ## ========================= INITIALIZATION OF ROBOT COMMUNICATION  =========================
-# ROBOT_HOST = "10.149.230.168" # in robotics lab
-ROBOT_HOST = "192.168.18.13"  # virtual machine in from linux host
-ROBOT_PORT = 30004
+ROBOT_HOST = "10.149.230.1" # in robotics lab
+ROBOT_PORT = 30003
 config_filename = "control_loop_configuration.xml"
 FREQUENCY = 1000 # send data in 500 Hz instead of default 125Hz
 time_start = time.time()

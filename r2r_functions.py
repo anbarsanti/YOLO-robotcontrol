@@ -124,7 +124,7 @@ def UR5e_loopmove(con, state, watchdog, setp, desired_value, time_plot,
     
     return con, state, watchdog, setp, time_plot, actual_p, actual_q
 
-def final_plotting (time_plot, actual_p_plot, actual_q_plot, q_dot_plot, area_plot, epsilon_plot):
+def final_plotting (time_plot, actual_p_plot, actual_q_plot, q_dot_plot, area_plot, area_reaching_plot, area_desired_plot, epsilon_plot):
     # Generate a unique folder
     folder_name = f"plot_{time.strftime('%Y%m%d_%H%M')}"
     
@@ -209,6 +209,34 @@ def final_plotting (time_plot, actual_p_plot, actual_q_plot, q_dot_plot, area_pl
     transposed_area_plot = np.array(area_plot).reshape(-1, 1)
     file_path = f"{new_folder_path}/area.csv"
     np.savetxt(file_path, transposed_area_plot, delimiter=",")
+
+    ## =================== AREA OF REACHING REGION =====================
+    plt.figure()
+    plt.plot(time_plot, area_reaching_plot, label="Area of Reaching Region")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Area of Reaching Region')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'area_reaching.png')
+    plt.savefig(file_path)
+
+    transposed_area_reaching_plot = np.array(area_reaching_plot).reshape(-1, 1)
+    file_path = f"{new_folder_path}/area_reaching.csv"
+    np.savetxt(file_path, transposed_area_reaching_plot, delimiter=",")
+
+    ## =================== AREA OF DESIRED REGION =====================
+    plt.figure()
+    plt.plot(time_plot, area_desired_plot, label="Area of Desired Region")
+    plt.legend()
+    plt.grid()
+    plt.ylabel('Area of Desired Region')
+    plt.xlabel('Time [sec]')
+    file_path = os.path.join(new_folder_path, 'area_desired.png')
+    plt.savefig(file_path)
+
+    transposed_area_desired_plot = np.array(area_desired_plot).reshape(-1, 1)
+    file_path = f"{new_folder_path}/area_desired.csv"
+    np.savetxt(file_path, transposed_area_desired_plot, delimiter=",")
 
     ## =================== Q_DOT POSITION =====================
     file_path = f"{new_folder_path}/q_dot.csv"
@@ -1399,8 +1427,8 @@ def r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual
         r_box_3p = cxyxyxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for OBB reaching box
 
         area = intersection_area_OBB_diy(reaching_box, desired_box)
-        area_of_desired_region = (d_box[2,0]*d_box[3,0]) # Area of desired region
-        area_proportion = (area/area_of_desired_region) # Area of overlapping region / area of desired region
+        area_of_reaching_region = (r_box[2,0]*r_box[3,0]) # Area of desired region
+        area_proportion = (area/area_of_reaching_region) # Area of overlapping region / area of desired region
         interpoints = intersection_points_OBB_diy(reaching_box, desired_box)
 
     else:  # HBB
@@ -1409,12 +1437,11 @@ def r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual
         r_box_3p = cxyxy2xyxyxy(reaching_box) # convert to xyxyxy format (image feature points) for HBB reaching box
 
         area = intersection_area_HBB_xyxy(reaching_box, desired_box) # Area of overlapping region
-        area_of_desired_region = (d_box[2,0]*d_box[3,0]) # Area of desired region
-        area_proportion = (area/area_of_desired_region) # Area of overlapping region / area of desired region
+        area_of_reaching_region = (r_box[2,0]*r_box[3,0]) # Area of desired region
+        area_proportion = (area/area_of_reaching_region) # Area of overlapping region / area of desired region
         interpoints = intersection_points_HBB_xyxy(reaching_box, desired_box)
 
 
-    
     ## ============================ REACHING STATE ===============================
     # Precompute & Predefine some terms
     e_cx = 0.05 #HBB
@@ -1471,6 +1498,7 @@ def r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual
     h_min = 0.8*d_box[3,0] # 90% of desired box's height
     h_max = 0.85*d_box[3,0] # 95% of desired box's height
     e_theta = 0.0
+
     # Objective Function for Scaling State
     f_wmax = r_box[2,0] - w_max
     f_wmin = w_min - r_box[2,0]
@@ -1519,4 +1547,4 @@ def r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual
     q_dot[3][0]=0; q_dot[4][0]=0; q_dot[5][0]=0
     print("q_dot",q_dot)
     
-    return q_dot, epsilon, area
+    return q_dot, epsilon, area_proportion
