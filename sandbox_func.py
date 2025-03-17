@@ -8,9 +8,9 @@ from r2r_functions import *
 import numpy as np
 
 ## ====================== INITIALIZATION OF TRACKING STUFF ==================================
-OBB = True
-# model = YOLO("model/yolo11-hbb-toy-25-02-24.pt") # toys for HBB object tracking
-model = YOLO("model/yolo11-obb-25-03-04-watercan_best.pt") # watercan for OBB object tracking
+OBB = False
+model = YOLO("model/yolo11-hbb-toy-25-02-24.pt") # toys for HBB object tracking
+# model = YOLO("model/yolo11-obb-25-03-04-watercan_best.pt") # watercan for OBB object tracking
 # model = YOLO("model/yolo11n.pt") # object tracking with HBB
 
 # if OBB==True: # Initialization for OBB case
@@ -133,10 +133,10 @@ while True:
 					xyxyn_d = xyxyn[i].tolist()
 
 					# Shift the desired area to above the detected box
-					# xyxyn_d[0] = xyxyn_d[0] - 0.05
-					xyxyn_d[1] = xyxyn_d[1] - 0.20
-					# xyxyn_d[2] = xyxyn_d[2] + 0.05
-					xyxyn_d[3] = xyxyn_d[3] - 0.20
+					# xyxyn_d[0] = xyxyn_d[0] - 0.1 # For Scaling
+					xyxyn_d[1] = xyxyn_d[1] - 0.20 # For Scaling
+					# xyxyn_d[2] = xyxyn_d[2] + 0.1 # For Scaling
+					# xyxyn_d[3] = xyxyn_d[3] + 0.10 # For Scaling
 
 					# Define the desired box
 					desired_box = [*[cls_i], *xyxyn_d]  # First toy's box detected

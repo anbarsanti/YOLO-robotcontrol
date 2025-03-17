@@ -318,14 +318,14 @@ def final_plotting (time_plot, actual_p_plot, actual_q_plot, q_dot_plot, area_pl
     file_path = os.path.join(new_folder_path, 'epsilon_5.png')
     plt.savefig(file_path)
 
-    plt.figure()
-    plt.plot(time_plot, epsilon_plot[5], label="Epsilon_6")
-    plt.legend()
-    plt.grid()
-    plt.ylabel('Epsilon_6')
-    plt.xlabel('Time [sec]')
-    file_path = os.path.join(new_folder_path, 'epsilon_6.png')
-    plt.savefig(file_path)
+    # plt.figure()
+    # plt.plot(time_plot, epsilon_plot[5], label="Epsilon_6")
+    # plt.legend()
+    # plt.grid()
+    # plt.ylabel('Epsilon_6')
+    # plt.xlabel('Time [sec]')
+    # file_path = os.path.join(new_folder_path, 'epsilon_6.png')
+    # plt.savefig(file_path)
 
     return plt
 
@@ -1446,8 +1446,8 @@ def r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual
     # Precompute & Predefine some terms
     e_cx = 0.05 #HBB
     e_cy = 0.05 #HBB
-    k_cx = 20
-    k_cy = 20
+    k_cx = +20
+    k_cy = +20
     P_r = 1
     f_cx = abs(r_box[0,0] - d_box[0,0]) ** 2 - e_cx ** 2
     f_cy = abs(r_box[1,0] - d_box[1,0]) ** 2 - e_cy ** 2
@@ -1471,8 +1471,8 @@ def r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual
 
     k_amin = -20
     k_amax = +20
-    A_dmin = 0.6
-    A_dmax = 1.00
+    A_dmin = 0.75
+    A_dmax = 0.85
     f_amin = A_dmin - area_proportion
     f_amax = area_proportion - A_dmax
     print("area:", area)
@@ -1488,15 +1488,15 @@ def r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual
     # print("P_A_dot", P_A_dot)
 
     # ============================ SCALING STATE ===============================
-    k_wmin = 20
-    k_wmax = 20
-    k_hmin = 20
-    k_hmax = 20
-    k_theta = 20
-    w_min = 0.8*d_box[2,0] # 90% of desired box's width
-    w_max = 0.85*d_box[2,0] # 95% of desired box's width
-    h_min = 0.8*d_box[3,0] # 90% of desired box's height
-    h_max = 0.85*d_box[3,0] # 95% of desired box's height
+    k_wmin = 3
+    k_wmax = 3
+    k_hmin = 3
+    k_hmax = 3
+    k_theta = 3
+    w_min = 0.8*d_box[2,0] # *100% of desired box's width
+    w_max = 0.85*d_box[2,0] # *100% of desired box's width
+    h_min = 0.8*d_box[3,0] # *100% of desired box's height
+    h_max = 0.85*d_box[3,0] # *100% of desired box's height
     e_theta = 0.0
 
     # Objective Function for Scaling State
@@ -1511,10 +1511,10 @@ def r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual
     # Differentiation of P_S without J_o_I_r
     P_S_dot = np.array ([[0],
                          [0],
-                         [((k_wmax / (n ** 2)) * ((max(0, f_wmax)) ** (n - 1)) +  (k_wmin / (n ** 2)) * ((max(0, f_wmin)) ** (n - 1)))*
-                          ((k_hmax / n) * ((max(0, f_hmax)) ** n) + (k_hmin / n) * ((max(0, f_hmin)) ** n))],
-                         [((k_wmax / n) * ((max(0, f_wmax)) ** n) - (k_wmin / n) * ((max(0, f_wmin)) ** n))*
-                          ((k_hmax / (n ** 2)) * ((max(0, f_hmax)) ** (n - 1)) -  (k_hmin / (n ** 2)) * ((max(0, f_hmin)) ** (n - 1)))],
+                         [((k_wmax / (n ** 2)) * ((max(0, f_wmax)) ** (n - 1)) -  (k_wmin / (n ** 2)) * ((max(0, f_wmin)) ** (n - 1)))*
+                          ((k_hmax / n) * ((max(0, f_hmax)) ** n) - (k_hmin / n) * ((max(0, f_hmin)) ** n))],
+                         [((k_wmax / n) * ((max(0, f_wmax)) ** n) + (k_wmin / n) * ((max(0, f_wmin)) ** n))*
+                          ((k_hmax / (n ** 2)) * ((max(0, f_hmax)) ** (n - 1)) + (k_hmin / (n ** 2)) * ((max(0, f_hmin)) ** (n - 1)))],
                          [(2 * k_theta / (n ** 2)) * ((max(0, f_theta)) ** (n - 1)) * (r_box[4,0] - d_box[4,0])]])
     
     # Epsilon_A
@@ -1528,7 +1528,7 @@ def r2r_control(reaching_box, desired_box, reaching_depth, desired_depth, actual
     J_o_I_r_pinv = np.linalg.pinv(J_o_I_r)
     
     # Compute the Jacobian Matrix J_alpha @ J_a @ J_r @ q_dot
-    J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints, desired_depth)) @ R_ir6 @ (J_r(actualq))).reshape(1,6)
+    J_alpha_a_r = ((J_alpha(interpoints)) @ (J_a_n(interpoints, 0.7)) @ R_ir6 @ (J_r(actualq))).reshape(1,6)
     J_alpha_a_r_pinv = np.linalg.pinv(J_alpha_a_r)
     
     # Total Jacobian
